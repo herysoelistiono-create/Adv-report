@@ -563,17 +563,24 @@ const monthlyChartOption = computed(() => {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
+  width: 100%;
+  max-width: 100%;
+  align-items: stretch;
 }
 
 .stats-card {
   height: 100%;
-  display: flex;
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
   min-width: 0;
-  overflow: hidden;
+  border: 1px solid #dcdcdc !important;
 }
 
 .kpi-card-content {
   width: 100%;
+  max-width: 100%;
   min-height: 122px;
   display: flex;
   flex-direction: column;
@@ -581,6 +588,10 @@ const monthlyChartOption = computed(() => {
   align-items: flex-start;
   min-width: 0;
   gap: 4px;
+}
+
+.kpi-card-content > * {
+  max-width: 100%;
 }
 
 .kpi-card .kpi-value {
@@ -602,8 +613,9 @@ const monthlyChartOption = computed(() => {
 }
 
 .kpi-card .q-badge {
+  display: inline-flex;
   align-self: flex-start;
-  width: auto;
+  width: fit-content;
   max-width: 100%;
   flex: 0 0 auto;
 }
