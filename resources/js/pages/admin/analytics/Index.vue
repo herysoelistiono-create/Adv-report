@@ -4,6 +4,8 @@ import { router, usePage } from "@inertiajs/vue3";
 import axios from "axios";
 import dayjs from "dayjs";
 import { create_month_options, formatNumber } from "@/helpers/utils";
+import ECharts from "vue-echarts";
+import * as echarts from "echarts";
 
 const page = usePage();
 const title = "Analitik";
@@ -118,6 +120,62 @@ watch(
   },
   { immediate: true }
 );
+
+// ── Line chart: Tren Penjualan Bulanan ────────────────────────
+const monthlyChartOption = computed(() => {
+  const hasCompare = form.compare_year && prevMonthlySales.value.length > 0;
+  const labels = monthlyRows.value.map((r) => dayjs(`${r.month}-01`).format("MMM YYYY"));
+  const currentData = monthlyRows.value.map((r) => r.current);
+  const prevData = monthlyRows.value.map((r) => r.previous);
+
+  const series = [
+    {
+      name: `FY ${form.fiscal_year}/${(form.fiscal_year || 0) + 1}`,
+      type: "line",
+      smooth: true,
+      data: currentData,
+      lineStyle: { color: "#1976d2", width: 2 },
+      itemStyle: { color: "#1976d2" },
+      areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: "rgba(25,118,210,0.18)" }, { offset: 1, color: "rgba(25,118,210,0.01)" }]) },
+    },
+  ];
+
+  if (hasCompare) {
+    series.push({
+      name: `FY ${form.compare_year}/${(form.compare_year || 0) + 1}`,
+      type: "line",
+      smooth: true,
+      data: prevData,
+      lineStyle: { color: "#f57c00", width: 2, type: "dashed" },
+      itemStyle: { color: "#f57c00" },
+    });
+  }
+
+  return {
+    tooltip: {
+      trigger: "axis",
+      formatter: (params) =>
+        params[0].name + "<br>" +
+        params.map((p) => `${p.marker}${p.seriesName}: <b>Rp ${formatNumber(p.value || 0)}</b>`).join("<br>"),
+    },
+    legend: { top: 4, data: series.map((s) => s.name) },
+    grid: { containLabel: true, left: 8, right: 8, bottom: 8, top: hasCompare ? 36 : 28 },
+    xAxis: {
+      type: "category",
+      data: labels,
+      axisLabel: { rotate: 30, fontSize: 11 },
+      axisTick: { alignWithLabel: true },
+    },
+    yAxis: {
+      type: "value",
+      axisLabel: {
+        formatter: (v) => (v >= 1_000_000 ? `${(v / 1_000_000).toFixed(0)}jt` : v >= 1_000 ? `${(v / 1_000).toFixed(0)}rb` : v),
+      },
+      splitLine: { lineStyle: { type: "dashed", color: "#ddd" } },
+    },
+    series,
+  };
+});
 </script>
 
 <template>
@@ -126,6 +184,7 @@ watch(
     <template #title>{{ title }}</template>
 
     <q-page class="q-pa-sm">
+      <!-- ── Filter ── -->
       <q-card flat bordered square>
         <q-card-section>
           <div class="row q-col-gutter-sm items-end">
@@ -173,55 +232,62 @@ watch(
         </q-card-section>
       </q-card>
 
+      <!-- ── KPI Cards ── -->
       <div class="row q-col-gutter-sm q-mt-sm">
-        <div class="col-xs-12 col-sm-6 col-md-3">
-          <q-card flat bordered square>
-            <q-card-section>
-              <div class="text-caption text-grey-7">Total Penjualan</div>
-              <div class="text-h6 text-weight-bold">Rp {{ formatNumber(currentStats.total_sales || 0) }}</div>
+        <div class="col-xs-6 col-sm-6 col-md-3">
+          <q-card flat bordered square class="kpi-card">
+            <q-card-section class="q-pa-sm">
+              <div class="text-caption text-grey-7 kpi-label">Total Penjualan</div>
+              <div class="text-weight-bold kpi-value">Rp {{ formatNumber(currentStats.total_sales || 0) }}</div>
               <div class="text-caption" v-if="prevStats">
-                Prev: Rp {{ formatNumber(prevStats.total_sales || 0) }}
-                <span class="q-ml-xs" :class="pctChange(currentStats.total_sales, prevStats.total_sales) >= 0 ? 'text-green-8' : 'text-red-8'">
-                  ({{ formatNumber(Math.abs(pctChange(currentStats.total_sales, prevStats.total_sales) || 0), 'id-ID', 1) }}%)
-                </span>
+                <span class="text-grey-7">Prev: Rp {{ formatNumber(prevStats.total_sales || 0) }}</span>
+                <q-badge
+                  class="q-ml-xs"
+                  :color="pctChange(currentStats.total_sales, prevStats.total_sales) >= 0 ? 'green-8' : 'red-8'"
+                >
+                  {{ (pctChange(currentStats.total_sales, prevStats.total_sales) >= 0 ? '+' : '') }}{{ formatNumber(pctChange(currentStats.total_sales, prevStats.total_sales) || 0, 'id-ID', 1) }}%
+                </q-badge>
               </div>
             </q-card-section>
           </q-card>
         </div>
 
-        <div class="col-xs-12 col-sm-6 col-md-3">
-          <q-card flat bordered square>
-            <q-card-section>
-              <div class="text-caption text-grey-7">Jumlah Transaksi</div>
-              <div class="text-h6 text-weight-bold">{{ formatNumber(currentStats.total_transactions || 0) }}</div>
+        <div class="col-xs-6 col-sm-6 col-md-3">
+          <q-card flat bordered square class="kpi-card">
+            <q-card-section class="q-pa-sm">
+              <div class="text-caption text-grey-7 kpi-label">Transaksi</div>
+              <div class="text-weight-bold kpi-value">{{ formatNumber(currentStats.total_transactions || 0) }}</div>
               <div class="text-caption" v-if="prevStats">
-                Prev: {{ formatNumber(prevStats.total_transactions || 0) }}
-                <span class="q-ml-xs" :class="pctChange(currentStats.total_transactions, prevStats.total_transactions) >= 0 ? 'text-green-8' : 'text-red-8'">
-                  ({{ formatNumber(Math.abs(pctChange(currentStats.total_transactions, prevStats.total_transactions) || 0), 'id-ID', 1) }}%)
-                </span>
+                <span class="text-grey-7">Prev: {{ formatNumber(prevStats.total_transactions || 0) }}</span>
+                <q-badge
+                  class="q-ml-xs"
+                  :color="pctChange(currentStats.total_transactions, prevStats.total_transactions) >= 0 ? 'green-8' : 'red-8'"
+                >
+                  {{ (pctChange(currentStats.total_transactions, prevStats.total_transactions) >= 0 ? '+' : '') }}{{ formatNumber(pctChange(currentStats.total_transactions, prevStats.total_transactions) || 0, 'id-ID', 1) }}%
+                </q-badge>
               </div>
             </q-card-section>
           </q-card>
         </div>
 
-        <div class="col-xs-12 col-sm-6 col-md-3">
-          <q-card flat bordered square>
-            <q-card-section>
-              <div class="text-caption text-grey-7">Distributor Aktif</div>
-              <div class="text-h6 text-weight-bold">{{ formatNumber(currentStats.active_distributors || 0) }}</div>
-              <div class="text-caption" v-if="prevStats">
+        <div class="col-xs-6 col-sm-6 col-md-3">
+          <q-card flat bordered square class="kpi-card">
+            <q-card-section class="q-pa-sm">
+              <div class="text-caption text-grey-7 kpi-label">Distributor Aktif</div>
+              <div class="text-weight-bold kpi-value">{{ formatNumber(currentStats.active_distributors || 0) }}</div>
+              <div class="text-caption text-grey-7" v-if="prevStats">
                 Prev: {{ formatNumber(prevStats.active_distributors || 0) }}
               </div>
             </q-card-section>
           </q-card>
         </div>
 
-        <div class="col-xs-12 col-sm-6 col-md-3">
-          <q-card flat bordered square>
-            <q-card-section>
-              <div class="text-caption text-grey-7">Total Qty</div>
-              <div class="text-h6 text-weight-bold">{{ formatNumber(currentStats.total_qty || 0, 'id-ID', 2) }}</div>
-              <div class="text-caption" v-if="prevStats">
+        <div class="col-xs-6 col-sm-6 col-md-3">
+          <q-card flat bordered square class="kpi-card">
+            <q-card-section class="q-pa-sm">
+              <div class="text-caption text-grey-7 kpi-label">Total Qty</div>
+              <div class="text-weight-bold kpi-value">{{ formatNumber(currentStats.total_qty || 0, 'id-ID', 2) }}</div>
+              <div class="text-caption text-grey-7" v-if="prevStats">
                 Prev: {{ formatNumber(prevStats.total_qty || 0, 'id-ID', 2) }}
               </div>
             </q-card-section>
@@ -229,222 +295,266 @@ watch(
         </div>
       </div>
 
-      <div class="row q-col-gutter-sm q-mt-sm">
-        <div class="col-12 col-lg-6">
-          <q-card flat bordered square>
-            <q-card-section>
-              <div class="text-subtitle1 text-weight-bold q-mb-sm">Penjualan per BS</div>
-              <q-markup-table flat bordered square separator="cell">
-                <thead>
-                  <tr>
-                    <th class="text-left">BS</th>
-                    <th class="text-right">Transaksi</th>
-                    <th class="text-right">Total (Rp)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="row in salesByBS" :key="`bs-${row.id}`">
-                    <td>{{ row.user_name }}</td>
-                    <td class="text-right">{{ formatNumber(row.transaction_count || 0) }}</td>
-                    <td class="text-right">Rp {{ formatNumber(row.total_sales || 0) }}</td>
-                  </tr>
-                  <tr v-if="!salesByBS.length">
-                    <td colspan="3" class="text-center text-grey">Tidak ada data</td>
-                  </tr>
-                </tbody>
-              </q-markup-table>
-            </q-card-section>
-          </q-card>
-        </div>
-
-        <div class="col-12 col-lg-6">
-          <q-card flat bordered square>
-            <q-card-section>
-              <div class="text-subtitle1 text-weight-bold q-mb-sm">Penjualan per Distributor</div>
-              <q-markup-table flat bordered square separator="cell">
-                <thead>
-                  <tr>
-                    <th class="text-left">Distributor</th>
-                    <th class="text-right">Transaksi</th>
-                    <th class="text-right">Total (Rp)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="row in salesByDistributor" :key="`dist-${row.id}`">
-                    <td>{{ row.distributor_name }}</td>
-                    <td class="text-right">{{ formatNumber(row.transaction_count || 0) }}</td>
-                    <td class="text-right">Rp {{ formatNumber(row.total_sales || 0) }}</td>
-                  </tr>
-                  <tr v-if="!salesByDistributor.length">
-                    <td colspan="3" class="text-center text-grey">Tidak ada data</td>
-                  </tr>
-                </tbody>
-              </q-markup-table>
-            </q-card-section>
-          </q-card>
-        </div>
-      </div>
-
-      <div class="row q-col-gutter-sm q-mt-sm">
-        <div class="col-12 col-lg-6">
-          <q-card flat bordered square>
-            <q-card-section>
-              <div class="text-subtitle1 text-weight-bold q-mb-sm">Penjualan per Produk</div>
-              <q-markup-table flat bordered square separator="cell">
-                <thead>
-                  <tr>
-                    <th class="text-left">Produk</th>
-                    <th class="text-right">Qty</th>
-                    <th class="text-right">Total (Rp)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="row in salesByProduct" :key="`prod-${row.id}`">
-                    <td>{{ row.product_name }}</td>
-                    <td class="text-right">{{ formatNumber(row.total_quantity || 0, 'id-ID', 2) }}</td>
-                    <td class="text-right">Rp {{ formatNumber(row.total_sales || 0) }}</td>
-                  </tr>
-                  <tr v-if="!salesByProduct.length">
-                    <td colspan="3" class="text-center text-grey">Tidak ada data</td>
-                  </tr>
-                </tbody>
-              </q-markup-table>
-            </q-card-section>
-          </q-card>
-        </div>
-
-        <div class="col-12 col-lg-6">
-          <q-card flat bordered square>
-            <q-card-section>
-              <div class="text-subtitle1 text-weight-bold q-mb-sm">Top Performer</div>
-              <q-markup-table flat bordered square separator="cell">
-                <thead>
-                  <tr>
-                    <th class="text-left">Kategori</th>
-                    <th class="text-left">Nama</th>
-                    <th class="text-right">Total (Rp)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="row in topDistributors" :key="`top-dist-${row.id}`">
-                    <td>Distributor</td>
-                    <td>{{ row.name }}</td>
-                    <td class="text-right">Rp {{ formatNumber(row.total_sales || 0) }}</td>
-                  </tr>
-                  <tr v-for="row in topRetailers" :key="`top-ret-${row.id}`">
-                    <td>Retailer</td>
-                    <td>{{ row.name }}</td>
-                    <td class="text-right">Rp {{ formatNumber(row.total_sales || 0) }}</td>
-                  </tr>
-                  <tr v-if="!topDistributors.length && !topRetailers.length">
-                    <td colspan="3" class="text-center text-grey">Tidak ada data</td>
-                  </tr>
-                </tbody>
-              </q-markup-table>
-            </q-card-section>
-          </q-card>
-        </div>
-      </div>
-
+      <!-- ── Line Chart Tren Bulanan ── -->
       <div class="row q-col-gutter-sm q-mt-sm">
         <div class="col-12">
           <q-card flat bordered square>
             <q-card-section>
-              <div class="text-subtitle1 text-weight-bold q-mb-sm">Tren Penjualan Bulanan</div>
-              <q-markup-table flat bordered square separator="cell">
-                <thead>
-                  <tr>
-                    <th class="text-left">Bulan</th>
-                    <th class="text-right">Transaksi</th>
-                    <th class="text-right">Total (Rp)</th>
-                    <th class="text-right">Prev Total (Rp)</th>
-                    <th class="text-right">Growth</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="row in monthlyRows" :key="row.month">
-                    <td>{{ dayjs(`${row.month}-01`).format('MMM YYYY') }}</td>
-                    <td class="text-right">{{ formatNumber(row.transactions || 0) }}</td>
-                    <td class="text-right">Rp {{ formatNumber(row.current || 0) }}</td>
-                    <td class="text-right">Rp {{ formatNumber(row.previous || 0) }}</td>
-                    <td class="text-right">
-                      <span v-if="row.growth !== null" :class="row.growth >= 0 ? 'text-green-8' : 'text-red-8'">
-                        {{ row.growth >= 0 ? '+' : '-' }}{{ formatNumber(Math.abs(row.growth), 'id-ID', 1) }}%
-                      </span>
-                      <span v-else>-</span>
-                    </td>
-                  </tr>
-                  <tr v-if="!monthlyRows.length">
-                    <td colspan="5" class="text-center text-grey">Tidak ada data</td>
-                  </tr>
-                </tbody>
-              </q-markup-table>
+              <div class="text-subtitle1 text-weight-bold q-mb-sm">
+                Tren Penjualan Bulanan
+                <span v-if="form.compare_year" class="text-caption text-grey-7 q-ml-sm">
+                  FY {{ form.fiscal_year }}/{{ (form.fiscal_year || 0) + 1 }} vs FY {{ form.compare_year }}/{{ (form.compare_year || 0) + 1 }}
+                </span>
+              </div>
+              <ECharts
+                v-if="monthlyRows.length"
+                :option="monthlyChartOption"
+                autoresize
+                style="height: 280px; width: 100%"
+              />
+              <div v-else class="text-center text-grey q-py-lg">Tidak ada data</div>
             </q-card-section>
           </q-card>
         </div>
       </div>
 
+      <!-- ── Tabel Tren Bulanan ── -->
       <div class="row q-col-gutter-sm q-mt-sm">
-        <div class="col-12 col-lg-6">
+        <div class="col-12">
+          <q-card flat bordered square>
+            <q-card-section>
+              <div class="text-subtitle1 text-weight-bold q-mb-sm">Detail Tren Bulanan</div>
+              <div class="overflow-auto">
+                <q-markup-table flat bordered square separator="cell" style="min-width: 480px">
+                  <thead>
+                    <tr>
+                      <th class="text-left" style="min-width:90px">Bulan</th>
+                      <th class="text-right" style="min-width:70px">Trx</th>
+                      <th class="text-right" style="min-width:130px">Total (Rp)</th>
+                      <th class="text-right" style="min-width:130px" v-if="form.compare_year">Prev (Rp)</th>
+                      <th class="text-right" style="min-width:70px" v-if="form.compare_year">Growth</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="row in monthlyRows" :key="row.month">
+                      <td class="text-no-wrap">{{ dayjs(`${row.month}-01`).format('MMM YYYY') }}</td>
+                      <td class="text-right">{{ formatNumber(row.transactions || 0) }}</td>
+                      <td class="text-right text-no-wrap">Rp {{ formatNumber(row.current || 0) }}</td>
+                      <td class="text-right text-no-wrap" v-if="form.compare_year">Rp {{ formatNumber(row.previous || 0) }}</td>
+                      <td class="text-right text-no-wrap" v-if="form.compare_year">
+                        <span v-if="row.growth !== null" :class="row.growth >= 0 ? 'text-green-8' : 'text-red-8'">
+                          {{ row.growth >= 0 ? '+' : '-' }}{{ formatNumber(Math.abs(row.growth), 'id-ID', 1) }}%
+                        </span>
+                        <span v-else class="text-grey">-</span>
+                      </td>
+                    </tr>
+                    <tr v-if="!monthlyRows.length">
+                      <td colspan="5" class="text-center text-grey">Tidak ada data</td>
+                    </tr>
+                  </tbody>
+                </q-markup-table>
+              </div>
+            </q-card-section>
+          </q-card>
+        </div>
+      </div>
+
+      <!-- ── Penjualan per BS & Distributor ── -->
+      <div class="row q-col-gutter-sm q-mt-sm">
+        <div class="col-xs-12 col-lg-6">
+          <q-card flat bordered square>
+            <q-card-section>
+              <div class="text-subtitle1 text-weight-bold q-mb-sm">Penjualan per BS</div>
+              <div class="overflow-auto">
+                <q-markup-table flat bordered square separator="cell" style="min-width: 320px">
+                  <thead>
+                    <tr>
+                      <th class="text-left">BS</th>
+                      <th class="text-right" style="min-width:70px">Trx</th>
+                      <th class="text-right" style="min-width:130px">Total (Rp)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="row in salesByBS" :key="`bs-${row.id}`">
+                      <td class="ellipsis" style="max-width:150px" :title="row.user_name">{{ row.user_name }}</td>
+                      <td class="text-right">{{ formatNumber(row.transaction_count || 0) }}</td>
+                      <td class="text-right text-no-wrap">Rp {{ formatNumber(row.total_sales || 0) }}</td>
+                    </tr>
+                    <tr v-if="!salesByBS.length">
+                      <td colspan="3" class="text-center text-grey">Tidak ada data</td>
+                    </tr>
+                  </tbody>
+                </q-markup-table>
+              </div>
+            </q-card-section>
+          </q-card>
+        </div>
+
+        <div class="col-xs-12 col-lg-6">
+          <q-card flat bordered square>
+            <q-card-section>
+              <div class="text-subtitle1 text-weight-bold q-mb-sm">Penjualan per Distributor</div>
+              <div class="overflow-auto">
+                <q-markup-table flat bordered square separator="cell" style="min-width: 320px">
+                  <thead>
+                    <tr>
+                      <th class="text-left">Distributor</th>
+                      <th class="text-right" style="min-width:70px">Trx</th>
+                      <th class="text-right" style="min-width:130px">Total (Rp)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="row in salesByDistributor" :key="`dist-${row.id}`">
+                      <td class="ellipsis" style="max-width:150px" :title="row.distributor_name">{{ row.distributor_name }}</td>
+                      <td class="text-right">{{ formatNumber(row.transaction_count || 0) }}</td>
+                      <td class="text-right text-no-wrap">Rp {{ formatNumber(row.total_sales || 0) }}</td>
+                    </tr>
+                    <tr v-if="!salesByDistributor.length">
+                      <td colspan="3" class="text-center text-grey">Tidak ada data</td>
+                    </tr>
+                  </tbody>
+                </q-markup-table>
+              </div>
+            </q-card-section>
+          </q-card>
+        </div>
+      </div>
+
+      <!-- ── Penjualan per Produk & Top Performer ── -->
+      <div class="row q-col-gutter-sm q-mt-sm">
+        <div class="col-xs-12 col-lg-6">
+          <q-card flat bordered square>
+            <q-card-section>
+              <div class="text-subtitle1 text-weight-bold q-mb-sm">Penjualan per Produk</div>
+              <div class="overflow-auto">
+                <q-markup-table flat bordered square separator="cell" style="min-width: 320px">
+                  <thead>
+                    <tr>
+                      <th class="text-left">Produk</th>
+                      <th class="text-right" style="min-width:80px">Qty</th>
+                      <th class="text-right" style="min-width:130px">Total (Rp)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="row in salesByProduct" :key="`prod-${row.id}`">
+                      <td class="ellipsis" style="max-width:140px" :title="row.product_name">{{ row.product_name }}</td>
+                      <td class="text-right">{{ formatNumber(row.total_quantity || 0, 'id-ID', 2) }}</td>
+                      <td class="text-right text-no-wrap">Rp {{ formatNumber(row.total_sales || 0) }}</td>
+                    </tr>
+                    <tr v-if="!salesByProduct.length">
+                      <td colspan="3" class="text-center text-grey">Tidak ada data</td>
+                    </tr>
+                  </tbody>
+                </q-markup-table>
+              </div>
+            </q-card-section>
+          </q-card>
+        </div>
+
+        <div class="col-xs-12 col-lg-6">
+          <q-card flat bordered square>
+            <q-card-section>
+              <div class="text-subtitle1 text-weight-bold q-mb-sm">Top Performer</div>
+              <div class="overflow-auto">
+                <q-markup-table flat bordered square separator="cell" style="min-width: 320px">
+                  <thead>
+                    <tr>
+                      <th class="text-left" style="min-width:80px">Kategori</th>
+                      <th class="text-left">Nama</th>
+                      <th class="text-right" style="min-width:130px">Total (Rp)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="row in topDistributors" :key="`top-dist-${row.id}`">
+                      <td class="text-no-wrap"><q-badge color="blue-8">Distributor</q-badge></td>
+                      <td class="ellipsis" style="max-width:130px" :title="row.name">{{ row.name }}</td>
+                      <td class="text-right text-no-wrap">Rp {{ formatNumber(row.total_sales || 0) }}</td>
+                    </tr>
+                    <tr v-for="row in topRetailers" :key="`top-ret-${row.id}`">
+                      <td class="text-no-wrap"><q-badge color="green-8">Retailer</q-badge></td>
+                      <td class="ellipsis" style="max-width:130px" :title="row.name">{{ row.name }}</td>
+                      <td class="text-right text-no-wrap">Rp {{ formatNumber(row.total_sales || 0) }}</td>
+                    </tr>
+                    <tr v-if="!topDistributors.length && !topRetailers.length">
+                      <td colspan="3" class="text-center text-grey">Tidak ada data</td>
+                    </tr>
+                  </tbody>
+                </q-markup-table>
+              </div>
+            </q-card-section>
+          </q-card>
+        </div>
+      </div>
+
+      <!-- ── Aktivitas vs Penjualan & Target vs Aktual ── -->
+      <div class="row q-col-gutter-sm q-mt-sm">
+        <div class="col-xs-12 col-lg-6">
           <q-card flat bordered square>
             <q-card-section>
               <div class="text-subtitle1 text-weight-bold q-mb-sm">Aktivitas vs Penjualan per Wilayah</div>
               <q-inner-loading :showing="loadingActivityVsSales">
                 <q-spinner size="32px" color="primary" />
               </q-inner-loading>
-              <q-markup-table flat bordered square separator="cell">
-                <thead>
-                  <tr>
-                    <th class="text-left">Wilayah</th>
-                    <th class="text-right">Aktivitas</th>
-                    <th class="text-right">Total Penjualan (Rp)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="row in activityVsSales" :key="`avs-${row.province_id}`">
-                    <td>{{ row.province_name }}</td>
-                    <td class="text-right">{{ formatNumber(row.activity_count || 0) }}</td>
-                    <td class="text-right">Rp {{ formatNumber(row.total_sales || 0) }}</td>
-                  </tr>
-                  <tr v-if="!activityVsSales.length && !loadingActivityVsSales">
-                    <td colspan="3" class="text-center text-grey">Tidak ada data</td>
-                  </tr>
-                </tbody>
-              </q-markup-table>
+              <div class="overflow-auto">
+                <q-markup-table flat bordered square separator="cell" style="min-width: 300px">
+                  <thead>
+                    <tr>
+                      <th class="text-left">Wilayah</th>
+                      <th class="text-right" style="min-width:80px">Aktivitas</th>
+                      <th class="text-right" style="min-width:130px">Penjualan (Rp)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="row in activityVsSales" :key="`avs-${row.province_id}`">
+                      <td class="ellipsis" style="max-width:150px" :title="row.province_name">{{ row.province_name }}</td>
+                      <td class="text-right">{{ formatNumber(row.activity_count || 0) }}</td>
+                      <td class="text-right text-no-wrap">Rp {{ formatNumber(row.total_sales || 0) }}</td>
+                    </tr>
+                    <tr v-if="!activityVsSales.length && !loadingActivityVsSales">
+                      <td colspan="3" class="text-center text-grey">Tidak ada data</td>
+                    </tr>
+                  </tbody>
+                </q-markup-table>
+              </div>
             </q-card-section>
           </q-card>
         </div>
 
-        <div class="col-12 col-lg-6">
+        <div class="col-xs-12 col-lg-6">
           <q-card flat bordered square>
             <q-card-section>
-              <div class="text-subtitle1 text-weight-bold q-mb-sm">Target vs Aktual (Distributor Sales)</div>
-              <q-markup-table flat bordered square separator="cell">
-                <thead>
-                  <tr>
-                    <th class="text-left">Produk</th>
-                    <th class="text-right">Target</th>
-                    <th class="text-right">Aktual</th>
-                    <th class="text-right">Achievement</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="row in targetVsActual" :key="`target-${row.product_name}`">
-                    <td>{{ row.product_name }} <span class="text-caption text-grey">({{ row.uom || '-' }})</span></td>
-                    <td class="text-right">{{ formatNumber(row.total_target || 0, 'id-ID', 2) }}</td>
-                    <td class="text-right">{{ formatNumber(row.total_actual || 0, 'id-ID', 2) }}</td>
-                    <td class="text-right">
-                      <span v-if="row.achievement !== null" :class="row.achievement >= 100 ? 'text-green-8' : 'text-orange-8'">
-                        {{ formatNumber(row.achievement || 0, 'id-ID', 1) }}%
-                      </span>
-                      <span v-else>-</span>
-                    </td>
-                  </tr>
-                  <tr v-if="!targetVsActual.length">
-                    <td colspan="4" class="text-center text-grey">Tidak ada data target</td>
-                  </tr>
-                </tbody>
-              </q-markup-table>
+              <div class="text-subtitle1 text-weight-bold q-mb-sm">Target vs Aktual</div>
+              <div class="overflow-auto">
+                <q-markup-table flat bordered square separator="cell" style="min-width: 360px">
+                  <thead>
+                    <tr>
+                      <th class="text-left">Produk</th>
+                      <th class="text-right" style="min-width:80px">Target</th>
+                      <th class="text-right" style="min-width:80px">Aktual</th>
+                      <th class="text-right" style="min-width:90px">Achievement</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="row in targetVsActual" :key="`target-${row.product_name}`">
+                      <td class="ellipsis" style="max-width:140px" :title="`${row.product_name} (${row.uom || '-'})`">
+                        {{ row.product_name }}
+                        <span class="text-caption text-grey">({{ row.uom || '-' }})</span>
+                      </td>
+                      <td class="text-right text-no-wrap">{{ formatNumber(row.total_target || 0, 'id-ID', 2) }}</td>
+                      <td class="text-right text-no-wrap">{{ formatNumber(row.total_actual || 0, 'id-ID', 2) }}</td>
+                      <td class="text-right text-no-wrap">
+                        <q-badge v-if="row.achievement !== null" :color="row.achievement >= 100 ? 'green-8' : 'orange-8'">
+                          {{ formatNumber(row.achievement || 0, 'id-ID', 1) }}%
+                        </q-badge>
+                        <span v-else class="text-grey">-</span>
+                      </td>
+                    </tr>
+                    <tr v-if="!targetVsActual.length">
+                      <td colspan="4" class="text-center text-grey">Tidak ada data target</td>
+                    </tr>
+                  </tbody>
+                </q-markup-table>
+              </div>
             </q-card-section>
           </q-card>
         </div>
