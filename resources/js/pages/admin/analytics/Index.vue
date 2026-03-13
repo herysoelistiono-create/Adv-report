@@ -26,7 +26,9 @@ const form = reactive({
 const monthOptions = computed(() => [{ value: null, label: "Semua Bulan" }, ...create_month_options()]);
 
 const fiscalYearOptions = computed(() => {
-  const base = form.fiscal_year || defaultFiscalYear;
+  const selectedFy = Number(form.fiscal_year || 0);
+  const serverFy = Number(serverFilters.value.fiscal_year || 0);
+  const base = Math.max(defaultFiscalYear, selectedFy, serverFy);
   const out = [];
   for (let i = 0; i < 10; i++) {
     const fy = base - i;
@@ -79,7 +81,6 @@ const monthlyRows = computed(() => {
       current,
       previous: prev,
       growth: pctChange(current, prev),
-      transactions: Number(item.transaction_count || 0),
     };
   });
 });
@@ -312,16 +313,22 @@ const monthlyChartOption = computed(() => {
                 <thead>
                   <tr>
                     <th class="text-left">Bulan</th>
-                    <th class="text-right">Trx</th>
-                    <th class="text-right">Total (Rp)</th>
-                    <th class="text-right" v-if="form.compare_year">Prev (Rp)</th>
+                    <th class="text-right">
+                      {{
+                        form.compare_year
+                          ? `FY ${form.fiscal_year}/${Number(form.fiscal_year || 0) + 1} (Rp)`
+                          : 'Total (Rp)'
+                      }}
+                    </th>
+                    <th class="text-right" v-if="form.compare_year">
+                      {{ `FY ${form.compare_year}/${Number(form.compare_year || 0) + 1} (Rp)` }}
+                    </th>
                     <th class="text-right" v-if="form.compare_year">Growth</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr v-for="row in monthlyRows" :key="row.month">
-                    <td>{{ dayjs(`${row.month}-01`).format('MMM YYYY') }}</td>
-                    <td class="text-right">{{ formatNumber(row.transactions || 0) }}</td>
+                    <td>{{ dayjs(`${row.month}-01`).format(form.compare_year ? 'MMM' : 'MMM YYYY') }}</td>
                     <td class="text-right">{{ formatNumber(row.current || 0) }}</td>
                     <td class="text-right" v-if="form.compare_year">{{ formatNumber(row.previous || 0) }}</td>
                     <td class="text-right" v-if="form.compare_year">
@@ -332,7 +339,7 @@ const monthlyChartOption = computed(() => {
                     </td>
                   </tr>
                   <tr v-if="!monthlyRows.length">
-                    <td colspan="5" class="text-center text-grey q-pa-sm">Tidak ada data</td>
+                    <td :colspan="form.compare_year ? 4 : 2" class="text-center text-grey q-pa-sm">Tidak ada data</td>
                   </tr>
                 </tbody>
               </table>
