@@ -191,12 +191,12 @@ const monthlyChartOption = computed(() => {
   <authenticated-layout>
     <template #title>{{ title }}</template>
 
-    <q-page class="q-pa-xs page-container">
-      <!-- ── Filter ── -->
-      <q-card flat bordered square>
-        <q-card-section class="q-pa-sm">
-          <div class="row q-col-gutter-xs items-end">
-            <div class="col-xs-12 col-sm-4 col-md-3">
+    <q-page class="analytics-page">
+      <div class="analytics-content">
+        <!-- ── Filter ── -->
+        <q-card flat bordered square class="section-card">
+          <q-card-section class="card-section">
+            <div class="filters-grid">
               <q-select
                 v-model="form.fiscal_year"
                 label="Fiscal Year"
@@ -205,10 +205,9 @@ const monthlyChartOption = computed(() => {
                 emit-value
                 outlined
                 dense
+                class="filter-field"
               />
-            </div>
 
-            <div class="col-xs-12 col-sm-4 col-md-3">
               <q-select
                 v-model="form.month"
                 label="Bulan"
@@ -217,10 +216,9 @@ const monthlyChartOption = computed(() => {
                 emit-value
                 outlined
                 dense
+                class="filter-field"
               />
-            </div>
 
-            <div class="col-xs-12 col-sm-4 col-md-3">
               <q-select
                 v-model="form.compare_year"
                 label="Compare Year"
@@ -229,24 +227,21 @@ const monthlyChartOption = computed(() => {
                 emit-value
                 outlined
                 dense
+                class="filter-field"
               />
-            </div>
 
-            <div class="col-xs-12 col-sm-12 col-md-3">
-              <div class="row q-gutter-xs filter-actions">
-                <q-btn color="primary" icon="search" label="Terapkan" dense @click="applyFilters" />
-                <q-btn color="grey-7" flat icon="refresh" label="Reset" dense @click="resetFilters" />
+              <div class="filter-actions">
+                <q-btn class="action-btn" color="primary" icon="search" label="Terapkan" dense @click="applyFilters" />
+                <q-btn class="action-btn" color="grey-7" flat icon="refresh" label="Reset" dense @click="resetFilters" />
               </div>
             </div>
-          </div>
-        </q-card-section>
-      </q-card>
+          </q-card-section>
+        </q-card>
 
-      <!-- ── KPI Cards ── -->
-      <div class="row q-col-gutter-xs q-mt-xs">
-        <div class="col-xs-6 col-md-3">
-          <q-card flat bordered square class="kpi-card">
-            <q-card-section class="q-pa-xs">
+        <!-- ── KPI Cards ── -->
+        <div class="stats-grid">
+          <q-card flat bordered square class="kpi-card stats-card">
+            <q-card-section class="card-section kpi-card-content">
               <div class="text-caption text-grey-7">Total Penjualan</div>
               <div class="kpi-value text-weight-bold">Rp {{ formatNumber(currentStats.total_sales || 0) }}</div>
               <template v-if="prevStats">
@@ -257,11 +252,9 @@ const monthlyChartOption = computed(() => {
               </template>
             </q-card-section>
           </q-card>
-        </div>
 
-        <div class="col-xs-6 col-md-3">
-          <q-card flat bordered square class="kpi-card">
-            <q-card-section class="q-pa-xs">
+          <q-card flat bordered square class="kpi-card stats-card">
+            <q-card-section class="card-section kpi-card-content">
               <div class="text-caption text-grey-7">Transaksi</div>
               <div class="kpi-value text-weight-bold">{{ formatNumber(currentStats.total_transactions || 0) }}</div>
               <template v-if="prevStats">
@@ -272,99 +265,85 @@ const monthlyChartOption = computed(() => {
               </template>
             </q-card-section>
           </q-card>
-        </div>
 
-        <div class="col-xs-6 col-md-3">
-          <q-card flat bordered square class="kpi-card">
-            <q-card-section class="q-pa-xs">
+          <q-card flat bordered square class="kpi-card stats-card">
+            <q-card-section class="card-section kpi-card-content">
               <div class="text-caption text-grey-7">Distributor Aktif</div>
               <div class="kpi-value text-weight-bold">{{ formatNumber(currentStats.active_distributors || 0) }}</div>
               <div class="text-caption text-grey-7 kpi-prev" v-if="prevStats">Prev: {{ formatNumber(prevStats.active_distributors || 0) }}</div>
             </q-card-section>
           </q-card>
-        </div>
 
-        <div class="col-xs-6 col-md-3">
-          <q-card flat bordered square class="kpi-card">
-            <q-card-section class="q-pa-xs">
+          <q-card flat bordered square class="kpi-card stats-card">
+            <q-card-section class="card-section kpi-card-content">
               <div class="text-caption text-grey-7">Total Qty</div>
               <div class="kpi-value text-weight-bold">{{ formatNumber(currentStats.total_qty || 0, 'id-ID', 2) }}</div>
               <div class="text-caption text-grey-7 kpi-prev" v-if="prevStats">Prev: {{ formatNumber(prevStats.total_qty || 0, 'id-ID', 2) }}</div>
             </q-card-section>
           </q-card>
         </div>
-      </div>
 
-      <!-- ── Line Chart Tren Bulanan ── -->
-      <div class="row q-mt-xs">
-        <div class="col-12">
-          <q-card flat bordered square>
-            <q-card-section class="q-pa-sm">
-              <div class="text-subtitle2 text-weight-bold">
-                Tren Penjualan Bulanan
-                <span v-if="form.compare_year" class="text-caption text-grey-7 q-ml-xs">
-                  FY{{ form.fiscal_year }}/{{ (form.fiscal_year || 0) + 1 }} vs FY{{ form.compare_year }}/{{ (form.compare_year || 0) + 1 }}
-                </span>
-              </div>
-              <div v-if="monthlyRows.length" class="chart-wrap">
-                <ECharts
-                  :option="monthlyChartOption"
-                  autoresize
-                  class="monthly-chart"
-                />
-              </div>
-              <div v-else class="text-center text-grey q-py-md">Tidak ada data</div>
-            </q-card-section>
-          </q-card>
-        </div>
-      </div>
+        <!-- ── Line Chart Tren Bulanan ── -->
+        <q-card flat bordered square class="section-card">
+          <q-card-section class="card-section">
+            <div class="text-subtitle2 text-weight-bold">
+              Tren Penjualan Bulanan
+              <span v-if="form.compare_year" class="text-caption text-grey-7 q-ml-xs">
+                FY{{ form.fiscal_year }}/{{ (form.fiscal_year || 0) + 1 }} vs FY{{ form.compare_year }}/{{ (form.compare_year || 0) + 1 }}
+              </span>
+            </div>
+            <div v-if="monthlyRows.length" class="chart-wrap">
+              <ECharts
+                :option="monthlyChartOption"
+                autoresize
+                class="monthly-chart"
+              />
+            </div>
+            <div v-else class="text-center text-grey q-py-md">Tidak ada data</div>
+          </q-card-section>
+        </q-card>
 
-      <!-- ── Tabel Tren Bulanan ── -->
-      <div class="row q-mt-xs">
-        <div class="col-12">
-          <q-card flat bordered square>
-            <q-card-section class="q-pa-sm">
-              <div class="text-subtitle2 text-weight-bold q-mb-xs">Detail Tren Bulanan</div>
-              <div class="table-scroll">
-                <table class="data-table">
-                  <thead>
-                    <tr>
-                      <th class="text-left">Bulan</th>
-                      <th class="text-right">Trx</th>
-                      <th class="text-right">Total (Rp)</th>
-                      <th class="text-right" v-if="form.compare_year">Prev (Rp)</th>
-                      <th class="text-right" v-if="form.compare_year">Growth</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr v-for="row in monthlyRows" :key="row.month">
-                      <td>{{ dayjs(`${row.month}-01`).format('MMM YYYY') }}</td>
-                      <td class="text-right">{{ formatNumber(row.transactions || 0) }}</td>
-                      <td class="text-right">{{ formatNumber(row.current || 0) }}</td>
-                      <td class="text-right" v-if="form.compare_year">{{ formatNumber(row.previous || 0) }}</td>
-                      <td class="text-right" v-if="form.compare_year">
-                        <span v-if="row.growth !== null" :class="row.growth >= 0 ? 'text-green-8 text-weight-bold' : 'text-red-8 text-weight-bold'">
-                          {{ row.growth >= 0 ? '+' : '' }}{{ formatNumber(row.growth, 'id-ID', 1) }}%
-                        </span>
-                        <span v-else class="text-grey">-</span>
-                      </td>
-                    </tr>
-                    <tr v-if="!monthlyRows.length">
-                      <td colspan="5" class="text-center text-grey q-pa-sm">Tidak ada data</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </q-card-section>
-          </q-card>
-        </div>
-      </div>
+        <!-- ── Tabel Tren Bulanan ── -->
+        <q-card flat bordered square class="section-card">
+          <q-card-section class="card-section">
+            <div class="text-subtitle2 text-weight-bold q-mb-xs">Detail Tren Bulanan</div>
+            <div class="table-scroll">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th class="text-left">Bulan</th>
+                    <th class="text-right">Trx</th>
+                    <th class="text-right">Total (Rp)</th>
+                    <th class="text-right" v-if="form.compare_year">Prev (Rp)</th>
+                    <th class="text-right" v-if="form.compare_year">Growth</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="row in monthlyRows" :key="row.month">
+                    <td>{{ dayjs(`${row.month}-01`).format('MMM YYYY') }}</td>
+                    <td class="text-right">{{ formatNumber(row.transactions || 0) }}</td>
+                    <td class="text-right">{{ formatNumber(row.current || 0) }}</td>
+                    <td class="text-right" v-if="form.compare_year">{{ formatNumber(row.previous || 0) }}</td>
+                    <td class="text-right" v-if="form.compare_year">
+                      <span v-if="row.growth !== null" :class="row.growth >= 0 ? 'text-green-8 text-weight-bold' : 'text-red-8 text-weight-bold'">
+                        {{ row.growth >= 0 ? '+' : '' }}{{ formatNumber(row.growth, 'id-ID', 1) }}%
+                      </span>
+                      <span v-else class="text-grey">-</span>
+                    </td>
+                  </tr>
+                  <tr v-if="!monthlyRows.length">
+                    <td colspan="5" class="text-center text-grey q-pa-sm">Tidak ada data</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </q-card-section>
+        </q-card>
 
-      <!-- ── Penjualan per BS & Distributor ── -->
-      <div class="row q-col-gutter-xs q-mt-xs">
-        <div class="col-xs-12 col-lg-6">
-          <q-card flat bordered square>
-            <q-card-section class="q-pa-sm">
+        <!-- ── Penjualan per BS & Distributor ── -->
+        <div class="two-column-grid">
+          <q-card flat bordered square class="section-card">
+            <q-card-section class="card-section">
               <div class="text-subtitle2 text-weight-bold q-mb-xs">Penjualan per BS</div>
               <div class="table-scroll">
                 <table class="data-table">
@@ -385,11 +364,9 @@ const monthlyChartOption = computed(() => {
               </div>
             </q-card-section>
           </q-card>
-        </div>
 
-        <div class="col-xs-12 col-lg-6">
-          <q-card flat bordered square>
-            <q-card-section class="q-pa-sm">
+          <q-card flat bordered square class="section-card">
+            <q-card-section class="card-section">
               <div class="text-subtitle2 text-weight-bold q-mb-xs">Penjualan per Distributor</div>
               <div class="table-scroll">
                 <table class="data-table">
@@ -411,13 +388,11 @@ const monthlyChartOption = computed(() => {
             </q-card-section>
           </q-card>
         </div>
-      </div>
 
-      <!-- ── Penjualan per Produk & Top Performer ── -->
-      <div class="row q-col-gutter-xs q-mt-xs">
-        <div class="col-xs-12 col-lg-6">
-          <q-card flat bordered square>
-            <q-card-section class="q-pa-sm">
+        <!-- ── Penjualan per Produk & Top Performer ── -->
+        <div class="two-column-grid">
+          <q-card flat bordered square class="section-card">
+            <q-card-section class="card-section">
               <div class="text-subtitle2 text-weight-bold q-mb-xs">Penjualan per Produk</div>
               <div class="table-scroll">
                 <table class="data-table">
@@ -438,11 +413,9 @@ const monthlyChartOption = computed(() => {
               </div>
             </q-card-section>
           </q-card>
-        </div>
 
-        <div class="col-xs-12 col-lg-6">
-          <q-card flat bordered square>
-            <q-card-section class="q-pa-sm">
+          <q-card flat bordered square class="section-card">
+            <q-card-section class="card-section">
               <div class="text-subtitle2 text-weight-bold q-mb-xs">Top Performer</div>
               <div class="table-scroll">
                 <table class="data-table">
@@ -469,13 +442,11 @@ const monthlyChartOption = computed(() => {
             </q-card-section>
           </q-card>
         </div>
-      </div>
 
-      <!-- ── Aktivitas vs Penjualan & Target vs Aktual ── -->
-      <div class="row q-col-gutter-xs q-mt-xs">
-        <div class="col-xs-12 col-lg-6">
-          <q-card flat bordered square>
-            <q-card-section class="q-pa-sm">
+        <!-- ── Aktivitas vs Penjualan & Target vs Aktual ── -->
+        <div class="two-column-grid">
+          <q-card flat bordered square class="section-card">
+            <q-card-section class="card-section">
               <div class="text-subtitle2 text-weight-bold q-mb-xs">Aktivitas vs Penjualan</div>
               <q-inner-loading :showing="loadingActivityVsSales">
                 <q-spinner size="24px" color="primary" />
@@ -499,11 +470,9 @@ const monthlyChartOption = computed(() => {
               </div>
             </q-card-section>
           </q-card>
-        </div>
 
-        <div class="col-xs-12 col-lg-6">
-          <q-card flat bordered square>
-            <q-card-section class="q-pa-sm">
+          <q-card flat bordered square class="section-card">
+            <q-card-section class="card-section">
               <div class="text-subtitle2 text-weight-bold q-mb-xs">Target vs Aktual</div>
               <div class="table-scroll">
                 <table class="data-table">
@@ -541,26 +510,80 @@ const monthlyChartOption = computed(() => {
 </template>
 
 <style scoped>
-/* Cegah seluruh halaman scroll ke kanan */
-.page-container {
+.analytics-page {
   width: 100%;
   max-width: 100%;
   overflow-x: hidden;
-  box-sizing: border-box;
 }
-.page-container [class*="col-"] {
+
+.analytics-content {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.section-card {
+  width: 100%;
+  max-width: 100%;
+}
+
+.card-section {
+  padding: 16px;
+}
+
+.filters-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  align-items: end;
+}
+
+.filter-field {
+  width: 100%;
   min-width: 0;
 }
 
 .filter-actions {
-  margin: 0;
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.action-btn {
+  flex: 1 1 calc(50% - 6px);
+  min-width: 0;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.stats-card {
+  height: 100%;
+  display: flex;
+}
+
+.kpi-card-content {
+  width: 100%;
+  min-height: 122px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
 }
 
 .kpi-card .kpi-value {
-  font-size: clamp(0.78rem, 3vw, 1.05rem);
+  font-size: clamp(1rem, 3.2vw, 1.25rem);
   line-height: 1.25;
-  word-break: break-all;
+  overflow-wrap: anywhere;
 }
+
 .kpi-card .kpi-prev {
   white-space: nowrap;
   overflow: hidden;
@@ -568,73 +591,114 @@ const monthlyChartOption = computed(() => {
   max-width: 100%;
 }
 
-/* Wrapper chart: cegah canvas ECharts overflow */
 .chart-wrap {
   width: 100%;
   max-width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
   overflow: hidden;
 }
+
 .monthly-chart {
-  height: 200px;
   width: 100% !important;
   max-width: 100%;
+  height: 220px;
 }
 
-/* Tabel compact untuk mobile */
+.two-column-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+}
+
 .table-scroll {
   width: 100%;
+  max-width: 100%;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
 }
+
 .data-table {
   width: 100%;
-  max-width: 100%;
+  min-width: 540px;
   border-collapse: collapse;
-  font-size: 0.76rem;
-  table-layout: fixed;
+  font-size: 0.78rem;
 }
+
 .data-table th {
-  padding: 3px 5px;
+  padding: 8px 10px;
   background: #f5f5f5;
   border-bottom: 1px solid #ddd;
   font-weight: 600;
   color: #444;
-  /* biarkan header wrap agar tidak memaksa lebar */
-  white-space: normal;
-  word-break: break-word;
+  white-space: nowrap;
 }
+
 .data-table td {
-  padding: 3px 5px;
+  padding: 8px 10px;
   border-bottom: 1px solid #eeeeee;
   vertical-align: middle;
-  overflow: hidden;
-  word-break: break-word;
 }
-.data-table tr:last-child td { border-bottom: none; }
+
+.data-table tr:last-child td {
+  border-bottom: none;
+}
+
 .td-name {
-  word-break: break-word;
+  overflow-wrap: anywhere;
 }
+
 .chip-sm {
   font-size: 0.7rem;
   height: 18px;
   padding: 0 6px;
 }
 
-@media (max-width: 599px) {
-  /* Quasar col-gutter memakai margin negatif yang bisa memicu overflow tipis di mobile */
-  .page-container .row.q-col-gutter-xs {
-    margin-left: 0 !important;
-    margin-right: 0 !important;
+@media (min-width: 600px) {
+  .filters-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .page-container .row.q-col-gutter-xs > [class*="col-"] {
-    padding-left: 2px !important;
-    padding-right: 2px !important;
+  .filter-actions {
+    grid-column: span 2;
+  }
+
+  .action-btn {
+    flex: 0 0 auto;
+    min-width: 120px;
+  }
+
+  .monthly-chart {
+    height: 260px;
+  }
+
+  .data-table {
+    font-size: 0.84rem;
   }
 }
 
-@media (min-width: 600px) {
-  .data-table { font-size: 0.84rem; }
-  .monthly-chart { height: 260px; }
+@media (min-width: 1024px) {
+  .filters-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .filter-actions {
+    grid-column: 4;
+    justify-content: flex-end;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .two-column-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .monthly-chart {
+    height: 280px;
+  }
 }
 </style>
