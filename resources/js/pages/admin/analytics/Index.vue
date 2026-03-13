@@ -232,9 +232,11 @@ const monthlyChartOption = computed(() => {
               />
             </div>
 
-            <div class="col-xs-12 col-sm-12 col-md-3 row q-gutter-xs">
-              <q-btn color="primary" icon="search" label="Terapkan" dense @click="applyFilters" />
-              <q-btn color="grey-7" flat icon="refresh" label="Reset" dense @click="resetFilters" />
+            <div class="col-xs-12 col-sm-12 col-md-3">
+              <div class="row q-gutter-xs filter-actions">
+                <q-btn color="primary" icon="search" label="Terapkan" dense @click="applyFilters" />
+                <q-btn color="grey-7" flat icon="refresh" label="Reset" dense @click="resetFilters" />
+              </div>
             </div>
           </div>
         </q-card-section>
@@ -336,7 +338,7 @@ const monthlyChartOption = computed(() => {
                   </thead>
                   <tbody>
                     <tr v-for="row in monthlyRows" :key="row.month">
-                      <td class="text-no-wrap">{{ dayjs(`${row.month}-01`).format('MMM YYYY') }}</td>
+                      <td>{{ dayjs(`${row.month}-01`).format('MMM YYYY') }}</td>
                       <td class="text-right">{{ formatNumber(row.transactions || 0) }}</td>
                       <td class="text-right">{{ formatNumber(row.current || 0) }}</td>
                       <td class="text-right" v-if="form.compare_year">{{ formatNumber(row.previous || 0) }}</td>
@@ -541,9 +543,17 @@ const monthlyChartOption = computed(() => {
 <style scoped>
 /* Cegah seluruh halaman scroll ke kanan */
 .page-container {
+  width: 100%;
   max-width: 100%;
   overflow-x: hidden;
   box-sizing: border-box;
+}
+.page-container [class*="col-"] {
+  min-width: 0;
+}
+
+.filter-actions {
+  margin: 0;
 }
 
 .kpi-card .kpi-value {
@@ -598,6 +608,7 @@ const monthlyChartOption = computed(() => {
   border-bottom: 1px solid #eeeeee;
   vertical-align: middle;
   overflow: hidden;
+  word-break: break-word;
 }
 .data-table tr:last-child td { border-bottom: none; }
 .td-name {
@@ -607,6 +618,19 @@ const monthlyChartOption = computed(() => {
   font-size: 0.7rem;
   height: 18px;
   padding: 0 6px;
+}
+
+@media (max-width: 599px) {
+  /* Quasar col-gutter memakai margin negatif yang bisa memicu overflow tipis di mobile */
+  .page-container .row.q-col-gutter-xs {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+
+  .page-container .row.q-col-gutter-xs > [class*="col-"] {
+    padding-left: 2px !important;
+    padding-right: 2px !important;
+  }
 }
 
 @media (min-width: 600px) {
