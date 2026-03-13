@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shift CRM</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📋</text></svg>">
+</head>
+<body>
+<div class="app-container">
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <h2>📋 Shift CRM</h2>
+      <p>Manajemen Shift &amp; CRM</p>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section">Menu Utama</div>
+      <button class="nav-item active" onclick="navigate('dashboard')">
+        <span class="icon">🏠</span> Dashboard
+      </button>
+      <div class="nav-section">Sumber Daya</div>
+      <button class="nav-item" onclick="navigate('employees')">
+        <span class="icon">👥</span> Karyawan
+      </button>
+      <button class="nav-item" onclick="navigate('customers')">
+        <span class="icon">🏢</span> Pelanggan
+      </button>
+      <div class="nav-section">Penjadwalan</div>
+      <button class="nav-item" onclick="navigate('shifts')">
+        <span class="icon">📅</span> Jadwal Shift
+      </button>
+      <button class="nav-item" onclick="navigate('calendar')">
+        <span class="icon">🗓️</span> Kalender
+      </button>
+      <div class="nav-section">Analitik</div>
+      <button class="nav-item" onclick="navigate('reports')">
+        <span class="icon">📊</span> Laporan
+      </button>
+    </nav>
+  </aside>
+
+  <!-- Main Content -->
+  <div class="main-content">
+    <header class="header">
+      <div class="d-flex align-center gap-2">
+        <button id="menu-toggle" class="btn btn-secondary btn-icon" style="display:none" onclick="toggleSidebar()">☰</button>
+        <h1 id="page-title">Dashboard</h1>
+      </div>
+      <div class="header-right">
+        <span id="current-date" class="text-muted" style="font-size:0.85rem"></span>
+      </div>
+    </header>
+
+    <main class="page-content" id="page-content">
+      <div class="loading"><div class="spinner"></div> Memuat...</div>
+    </main>
+  </div>
+</div>
+
+<!-- Toast container -->
+<div id="toast-container"></div>
+
+<!-- Employee Modal -->
+<div class="modal-overlay" id="employee-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="employee-modal-title">Tambah Karyawan</h3>
+      <button class="btn-close" onclick="closeModal('employee-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <form id="employee-form" onsubmit="saveEmployee(event)">
+        <input type="hidden" id="employee-id">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Nama Lengkap *</label>
+            <input type="text" class="form-control" id="emp-name" required placeholder="Nama karyawan">
+          </div>
+          <div class="form-group">
+            <label class="form-label">NIK</label>
+            <input type="text" class="form-control" id="emp-nik" placeholder="Nomor Induk Karyawan">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Jabatan</label>
+            <input type="text" class="form-control" id="emp-position" placeholder="Jabatan">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Departemen</label>
+            <input type="text" class="form-control" id="emp-department" placeholder="Departemen">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Telepon</label>
+            <input type="tel" class="form-control" id="emp-phone" placeholder="Nomor telepon">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Email</label>
+            <input type="email" class="form-control" id="emp-email" placeholder="Email">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Status</label>
+          <select class="form-control form-select" id="emp-status">
+            <option value="active">Aktif</option>
+            <option value="inactive">Tidak Aktif</option>
+          </select>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('employee-modal')">Batal</button>
+      <button class="btn btn-primary" onclick="document.getElementById('employee-form').requestSubmit()">Simpan</button>
+    </div>
+  </div>
+</div>
+
+<!-- Customer Modal -->
+<div class="modal-overlay" id="customer-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="customer-modal-title">Tambah Pelanggan</h3>
+      <button class="btn-close" onclick="closeModal('customer-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <form id="customer-form" onsubmit="saveCustomer(event)">
+        <input type="hidden" id="customer-id">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Nama *</label>
+            <input type="text" class="form-control" id="cust-name" required placeholder="Nama pelanggan">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Perusahaan</label>
+            <input type="text" class="form-control" id="cust-company" placeholder="Nama perusahaan">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Telepon</label>
+            <input type="tel" class="form-control" id="cust-phone" placeholder="Nomor telepon">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Email</label>
+            <input type="email" class="form-control" id="cust-email" placeholder="Email">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Alamat</label>
+          <input type="text" class="form-control" id="cust-address" placeholder="Alamat lengkap">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Status</label>
+          <select class="form-control form-select" id="cust-status">
+            <option value="active">Aktif</option>
+            <option value="prospect">Prospek</option>
+            <option value="inactive">Tidak Aktif</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Catatan</label>
+          <textarea class="form-control" id="cust-notes" rows="2" placeholder="Catatan tambahan"></textarea>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('customer-modal')">Batal</button>
+      <button class="btn btn-primary" onclick="document.getElementById('customer-form').requestSubmit()">Simpan</button>
+    </div>
+  </div>
+</div>
+
+<!-- Shift Schedule Modal -->
+<div class="modal-overlay" id="shift-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="shift-modal-title">Tambah Jadwal Shift</h3>
+      <button class="btn-close" onclick="closeModal('shift-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <form id="shift-form" onsubmit="saveShift(event)">
+        <input type="hidden" id="shift-schedule-id">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Karyawan *</label>
+            <select class="form-control form-select" id="shift-employee" required>
+              <option value="">-- Pilih Karyawan --</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Shift *</label>
+            <select class="form-control form-select" id="shift-type" required>
+              <option value="">-- Pilih Shift --</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Tanggal *</label>
+            <input type="date" class="form-control" id="shift-date" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Pelanggan</label>
+            <select class="form-control form-select" id="shift-customer">
+              <option value="">-- Pilih Pelanggan (opsional) --</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Status</label>
+          <select class="form-control form-select" id="shift-status">
+            <option value="scheduled">Terjadwal</option>
+            <option value="completed">Selesai</option>
+            <option value="absent">Tidak Hadir</option>
+            <option value="leave">Cuti</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Catatan</label>
+          <textarea class="form-control" id="shift-notes" rows="2" placeholder="Catatan tambahan"></textarea>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('shift-modal')">Batal</button>
+      <button class="btn btn-primary" onclick="document.getElementById('shift-form').requestSubmit()">Simpan</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Confirm Modal -->
+<div class="modal-overlay" id="delete-modal">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-header">
+      <h3>Konfirmasi Hapus</h3>
+      <button class="btn-close" onclick="closeModal('delete-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <p id="delete-message">Apakah Anda yakin ingin menghapus data ini?</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('delete-modal')">Batal</button>
+      <button class="btn btn-danger" id="delete-confirm-btn">Hapus</button>
+    </div>
+  </div>
+</div>
+
+<script src="/js/app.js"></script>
+</body>
+</html>
