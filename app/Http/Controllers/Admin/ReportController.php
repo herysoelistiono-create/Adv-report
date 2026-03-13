@@ -1,0 +1,549 @@
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+use App\Http\Controllers\Controller;
+use App\Models\Activity;
+use App\Models\ActivityPlan;
+use App\Models\ActivityTarget;
+use App\Models\Customer;
+use App\Models\DemoPlot;
+use App\Models\InventoryLog;
+use App\Models\Product;
+use App\Models\Province;
+use App\Models\Sale;
+use App\Models\User;
+use App\Services\AnalyticsService;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
+use Exception;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use Symfony\Component\HttpFoundation\StreamedResponse;
+
+class ReportController extends Controller
+{
+    public function index(Request $request)
+    {
+        $type = $request->get('report_type');
+
+        $currentUser = Auth::user();
+        $users = [];
+        if ($currentUser->role == User::Role_Agronomist) {
+            $users = User::query()->where('role', '=', User::Role_BS)
+                ->where('parent_id', '=', $currentUser->id)
+                ->orWhere('id', '=', $currentUser->id)
+                ->orderBy('name', 'asc')
+                ->get();
+        } else if ($currentUser->role == User::Role_Admin) {
+            $users = User::query()->orderBy('name', 'asc')->get();
+        }
+
+        return inertia('admin/report/Index', [
+            'report_type' => $type,
+            'users'       => $users,
+            'products'    => Product::where('active', true)->orderBy('name')->select('id', 'name')->get(),
+            'provinces'   => Province::orderBy('name')->get(['id', 'name']),
+        ]);
+    }
+
+    public function demoPlotDetail(Request $request)
+    {
+        $user_id = $request->get('user_id');
+
+        if (isset($user_id)) {
+            $current_user = Auth::user();
+
+            $q = DemoPlot::select('demo_plots.*')
+                ->leftJoin('users', 'users.id', '=', 'demo_plots.user_id')
+                ->leftJoin('products', 'products.id', '=', 'demo_plots.product_id')
+                ->with([
+                    'user:id,username,name',
+                    'product:id,name',
+                ]);
+
+            if ($current_user->role == User::Role_Agronomist) {
+                if ($user_id == 'all') {
+                    $q->whereHas('user', function ($query) use ($current_user) {
+                        $query->where('parent_id', $current_user->id);
+                    });
+                } else {
+                    $q->where('demo_plots.user_id', $user_id);
+                }
+            } else if ($current_user->role == User::Role_Admin) {
+                if ($user_id != 'all') {
+                    $q->where('demo_plots.user_id', $user_id);
+                }
+            }
+
+            $items = $q->where('demo_plots.active', true)
+                ->orderBy('users.name', 'asc')
+                ->orderBy('products.name', 'asc')
+                ->get();
+
+            [$title, $user] = $this->resolveTitle('Laporan Demo Plot', $user_id);
+
+            return $this->generatePdfReport('report.demo-plot-detail', 'landscape', compact(
+                'items',
+                'title',
+                'user'
+            ));
+        }
+    }
+
+    public function demoPlotWithPhoto(Request $request)
+    {
+        $user_id = $request->get('user_id');
+
+        if (isset($user_id)) {
+            $current_user = Auth::user();
+
+            $q = DemoPlot::select('demo_plots.*')
+                ->leftJoin('users', 'users.id', '=', 'demo_plots.user_id')
+                ->leftJoin('products', 'products.id', '=', 'demo_plots.product_id')
+                ->leftJoin(
+                    DB::raw('
+                        (
+                            SELECT dpv1.demo_plot_id, dpv1.image_path
+                            FROM demo_plot_visits dpv1
+                            INNER JOIN (
+                                SELECT demo_plot_id, MAX(created_datetime) AS max_created_datetime
+                                FROM demo_plot_visits
+                                GROUP BY demo_plot_id
+                            ) dpv2 ON dpv1.demo_plot_id = dpv2.demo_plot_id AND dpv1.created_datetime = dpv2.max_created_datetime
+                        ) AS latest_visits
+                    '),
+                    'latest_visits.demo_plot_id',
+                    '=',
+                    'demo_plots.id'
+                )
+                ->with([
+                    'user:id,username,name',
+                    'product:id,name',
+                ]);
+
+            if ($current_user->role == User::Role_Agronomist) {
+                if ($user_id == 'all') {
+                    $q->whereHas('user', function ($query) use ($current_user) {
+                        $query->where('parent_id', $current_user->id);
+                    });
+                } else {
+                    $q->where('demo_plots.user_id', $user_id);
+                }
+            } else if ($current_user->role == User::Role_Admin) {
+                if ($user_id != 'all') {
+                    $q->where('demo_plots.user_id', $user_id);
+                }
+            }
+
+            $items = $q->where('demo_plots.active', true)
+                ->orderBy('users.name', 'asc')
+                ->orderBy('products.name', 'asc')
+                ->get();
+
+            [$title, $user] = $this->resolveTitle('Laporan Foto Demo Plot', $user_id);
+
+            return $this->generatePdfReport('report.demo-plot-with-photo', 'landscape', compact(
+                'items',
+                'title',
+                'user'
+            ));
+        }
+    }
+
+    public function newDemoPlotDetail(Request $request)
+    {
+        [$start_date, $end_date] = resolve_period(
+            $request->get('period'),
+            $request->get('start_date'),
+            $request->get('end_date')
+        );
+        $user_id = $request->get('user_id');
+
+        if (isset($user_id)) {
+            $current_user = Auth::user();
+
+            $q = DemoPlot::select('demo_plots.*')
+                ->leftJoin('users', 'users.id', '=', 'demo_plots.user_id')
+                ->leftJoin('products', 'products.id', '=', 'demo_plots.product_id')
+                ->with([
+                    'user:id,username,name',
+                    'product:id,name',
+                ]);
+
+            if ($current_user->role == User::Role_Agronomist) {
+                if ($user_id == 'all') {
+                    $q->whereHas('user', function ($query) use ($current_user) {
+                        $query->where('parent_id', $current_user->id);
+                    });
+                } else {
+                    $q->where('demo_plots.user_id', $user_id);
+                }
+            }
+
+            $plantStatusSubtitle = 'Status Tanaman: ';
+            $plant_statuses = $request->get("plant_statuses", "all");
+            if (!empty($plant_statuses)) {
+                $status = explode(',', $plant_statuses);
+                $q->whereIn('demo_plots.plant_status', $status);
+
+                $statusLabels = [];
+                foreach ($status as $statusKey) {
+                    $statusLabels[] = DemoPlot::PlantStatuses[$statusKey];
+                }
+                $plantStatusSubtitle .= implode(', ', $statusLabels);
+            } else {
+                $plantStatusSubtitle .= 'Semua';
+            }
+
+            $items = $q->where('demo_plots.active', true)
+                ->whereBetween('plant_date', [$start_date, $end_date])
+                ->orderBy('users.name', 'asc')
+                ->orderBy('products.name', 'asc')
+                ->get();
+
+            $format = $request->get('format', 'pdf');
+            [$title, $user] = $this->resolveTitle('Laporan Demo Plot Baru', $user_id);
+            $subtitles = [
+                $plantStatusSubtitle
+            ];
+            return $this->generatePdfReport('report.new-demo-plot-detail', 'landscape', compact(
+                'items',
+                'title',
+                'user',
+                'subtitles',
+                'start_date',
+                'end_date',
+            ));
+        }
+    }
+
+    public function clientActualInventory(Request $request)
+    {
+        $userId = $request->get('user_id');
+        $productId = $request->get('product_id');
+        $currentUser = Auth::user();
+
+        // 1. Buat subquery untuk mendapatkan tanggal pemeriksaan (check_date) terbaru untuk setiap grup
+        $latestCheckDateSubQuery = InventoryLog::select(
+            'product_id',
+            'customer_id',
+            'lot_package',
+            DB::raw('MAX(check_date) as latest_date')
+        )
+            // Terapkan filter user_id dan product_id secara opsional di sini
+            ->when($userId && $userId !== 'all', function ($query) use ($userId) {
+                return $query->where('user_id', $userId);
+            })
+            ->when($productId && $productId !== 'all', function ($query) use ($productId) {
+                return $query->where('product_id', $productId);
+            })
+            ->groupBy('product_id', 'customer_id', 'lot_package');
+
+        // Logika tambahan untuk peran Agronomist
+        if ($currentUser->role == User::Role_Agronomist) {
+            // Ambil semua user_id bawahan dari parent_id yang sesuai
+            $childUserIds = User::where('parent_id', $currentUser->id)->pluck('id');
+
+            // Tambahkan user_id BS itu sendiri ke dalam daftar
+            $childUserIds->push($currentUser->id);
+
+            // Tambahkan klausa 'whereIn' untuk memfilter berdasarkan user_id bawahan
+            $latestCheckDateSubQuery->whereIn('user_id', $childUserIds);
+        }
+
+        // 2. Buat subquery utama untuk mendapatkan ID terakhir dari entri dengan check_date terbaru
+        $latestIdSubQuery = InventoryLog::select(DB::raw('MAX(id) as max_id'))
+            ->joinSub($latestCheckDateSubQuery, 't_latest_date', function ($join) {
+                $join->on('inventory_logs.product_id', '=', 't_latest_date.product_id')
+                    ->on('inventory_logs.customer_id', '=', 't_latest_date.customer_id')
+                    ->on('inventory_logs.lot_package', '=', 't_latest_date.lot_package')
+                    ->on('inventory_logs.check_date', '=', 't_latest_date.latest_date');
+            })
+            ->groupBy('inventory_logs.product_id', 'inventory_logs.customer_id', 'inventory_logs.lot_package');
+
+        // 3. Jalankan query utama untuk mendapatkan data final
+        $items = InventoryLog::from('inventory_logs as t1')
+            ->joinSub($latestIdSubQuery, 't_latest_id', function ($join) {
+                $join->on('t1.id', '=', 't_latest_id.max_id');
+            })
+            ->where('t1.quantity', '>', 0)
+            ->orderBy('t1.user_id')
+            ->orderBy('t1.customer_id')
+            ->orderBy('t1.product_id')
+            ->get();
+
+        [$title, $user, $product] = $this->resolveTitle('Laporan Inventori Aktual', $userId, $productId);
+        $format = $request->get('format', 'pdf');
+
+        if ($format === 'pdf') {
+            return $this->generatePdfReport('report.client-actual-inventory', 'landscape', compact(
+                'items',
+                'title',
+                'user',
+                'product',
+            ));
+        } else if ($format === 'excel') {
+            $spreadsheet = new Spreadsheet();
+            $sheet = $spreadsheet->getActiveSheet();
+
+            // Tambahkan header
+            $sheet->setCellValue('A1', 'Area');
+            $sheet->setCellValue('B1', 'Crops');
+            $sheet->setCellValue('C1', 'Checker');
+            $sheet->setCellValue('D1', 'Kiosk/Distributor');
+            $sheet->setCellValue('E1', 'Hybrid');
+            $sheet->setCellValue('F1', 'Check Date');
+            $sheet->setCellValue('G1', 'Lot Package');
+            $sheet->setCellValue('H1', 'Qty');
+
+            // Tambahkan data ke Excel
+            $row = 2;
+            foreach ($items as $num => $item) {
+                $sheet->setCellValue('A' . $row, $item->area);
+                $sheet->setCellValue('B' . $row, $item->product->category->name);
+                $sheet->setCellValue('C' . $row, $item->user->name);
+                $sheet->setCellValue('D' . $row, $item->customer->name);
+                $sheet->setCellValue('E' . $row, $item->product->name);
+                $sheet->setCellValue('F' . $row, format_date($item->check_date));
+                $sheet->setCellValue('G' . $row, $item->lot_package);
+                $sheet->setCellValue('H' . $row, $item->quantity);
+                $row++;
+            }
+
+            // Kirim ke memori tanpa menyimpan file
+            $response = new StreamedResponse(function () use ($spreadsheet) {
+                $writer = new Xlsx($spreadsheet);
+                $writer->save('php://output');
+            });
+
+            $filename = $title . ' - ' . env('APP_NAME') . Carbon::now()->format('dmY_His');
+
+            // Atur header response untuk download
+            $response->headers->set('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+            $response->headers->set('Content-Disposition', 'attachment; filename="' . $filename . '.xlsx"');
+
+            return $response;
+        }
+
+        abort(400, "Unknown format $format.");
+    }
+
+    protected function resolveTitle(string $baseTitle, $user_id, $product_id = 'all'): array
+    {
+        $user = null;
+        if ($user_id !== 'all') {
+            $user = User::find($user_id);
+            $title = "$baseTitle - $user->name ($user->username)";
+        } else {
+            $title = "$baseTitle - All BS";
+        }
+
+        $product = null;
+        if ($product_id !== 'all') {
+            $product = Product::find($product_id);
+            $title .= ' - ' . $product->name;
+        } else {
+            $title .= ' - All Varietas';
+        }
+
+        return [$title, $user, $product];
+    }
+
+
+    protected function generatePdfReport($view, $orientation, $data, $response = 'pdf')
+    {
+        $filename = env('APP_NAME') . ' - ' . $data['title'];
+
+        if (isset($data['start_date']) || isset($data['end_date'])) {
+            if (empty($data['subtitles'])) {
+                $data['subtitles'] = [];
+            }
+            $data['subtitles'][] = 'Periode: ' . format_date($data['start_date']) . ' s/d ' . format_date($data['end_date']);
+        }
+
+        if ($response == 'pdf') {
+            return Pdf::loadView($view, $data)
+                ->setPaper('a4', $orientation)
+                ->download($filename . '.pdf');
+        }
+
+        if ($response == 'html') {
+            return view($view, $data);
+        }
+
+        throw new Exception('Unknown response type!');
+    }
+
+    // ---- New Sales / Analytics Reports ----
+
+    public function salesByRegion(Request $request)
+    {
+        $analytics = app(AnalyticsService::class);
+        $filters   = $this->buildReportFilters($request);
+
+        $items = Sale::with(['distributor:id,name', 'retailer:id,name', 'province:id,name'])
+            ->when(!empty($filters['province_id']), fn($q) => $q->where('province_id', $filters['province_id']))
+            ->when(!empty($filters['start_date']),  fn($q) => $q->whereDate('date', '>=', $filters['start_date']))
+            ->when(!empty($filters['end_date']),    fn($q) => $q->whereDate('date', '<=', $filters['end_date']))
+            ->orderByDesc('date')->get();
+
+        $summary = $analytics->salesByRegion($filters);
+        $title   = 'Laporan Penjualan per Wilayah';
+
+        return $this->generatePdfReport('reports.sales-by-region', 'landscape', array_merge(
+            compact('items', 'summary', 'title'),
+            $filters
+        ));
+    }
+
+    public function salesByProduct(Request $request)
+    {
+        $analytics = app(AnalyticsService::class);
+        $filters   = $this->buildReportFilters($request);
+
+        $summary = $analytics->salesByProduct($filters);
+        $title   = 'Laporan Penjualan per Produk';
+
+        return $this->generatePdfReport('reports.sales-by-product', 'landscape', array_merge(
+            compact('summary', 'title'),
+            $filters
+        ));
+    }
+
+    public function activityVsSales(Request $request)
+    {
+        $analytics = app(AnalyticsService::class);
+        $filters   = $this->buildReportFilters($request);
+
+        $data  = $analytics->salesVsActivities($filters);
+        $title = 'Laporan Aktivitas vs Penjualan';
+
+        return $this->generatePdfReport('reports.activity-vs-sales', 'landscape', array_merge(
+            compact('data', 'title'),
+            $filters
+        ));
+    }
+
+    public function distributorPerformance(Request $request)
+    {
+        $analytics = app(AnalyticsService::class);
+        $filters   = $this->buildReportFilters($request);
+
+        $distributors = $analytics->topDistributors($filters, 50);
+        $title        = 'Laporan Performa Distributor';
+
+        return $this->generatePdfReport('reports.distributor-performance', 'landscape', array_merge(
+            compact('distributors', 'title'),
+            $filters
+        ));
+    }
+
+    private function buildReportFilters(Request $request): array
+    {
+        $period     = $request->get('period', 'custom');
+        $start_date = $request->get('start_date');
+        $end_date   = $request->get('end_date');
+
+        if ($period && $period !== 'custom') {
+            [$start_date, $end_date] = resolve_period($period);
+        }
+
+        return array_filter([
+            'start_date'  => $start_date,
+            'end_date'    => $end_date,
+            'province_id' => $request->get('province_id'),
+        ]);
+    }
+
+    // ---- Activity Plan / Realization / Target Reports ----
+
+    public function activityPlanDetail(Request $request)
+    {
+        [$start_date, $end_date] = resolve_period(
+            $request->get('period'),
+            $request->get('start_date'),
+            $request->get('end_date')
+        );
+        $user_id      = $request->get('user_id');
+        $currentUser  = Auth::user();
+
+        $q = ActivityPlan::with(['user:id,username,name', 'details.type'])
+            ->whereBetween('date', [$start_date, $end_date]);
+
+        if ($currentUser->role === User::Role_Agronomist) {
+            $childIds = User::where('parent_id', $currentUser->id)->pluck('id')->push($currentUser->id);
+            $q->whereIn('user_id', $childIds);
+        }
+        if ($user_id && $user_id !== 'all') {
+            $q->where('user_id', $user_id);
+        }
+
+        $items = $q->orderBy('date', 'desc')->get();
+        [$title, $user] = $this->resolveTitle('Laporan Rencana Kegiatan', $user_id ?? 'all');
+
+        return $this->generatePdfReport('report.activity-plan-detail', 'landscape', compact(
+            'items', 'title', 'user', 'start_date', 'end_date'
+        ));
+    }
+
+    public function activityRealizationDetail(Request $request)
+    {
+        [$start_date, $end_date] = resolve_period(
+            $request->get('period'),
+            $request->get('start_date'),
+            $request->get('end_date')
+        );
+        $user_id     = $request->get('user_id');
+        $currentUser = Auth::user();
+
+        $q = Activity::with(['user:id,username,name', 'type:id,name', 'product:id,name'])
+            ->whereBetween('date', [$start_date, $end_date]);
+
+        if ($currentUser->role === User::Role_Agronomist) {
+            $childIds = User::where('parent_id', $currentUser->id)->pluck('id')->push($currentUser->id);
+            $q->whereIn('user_id', $childIds);
+        }
+        if ($user_id && $user_id !== 'all') {
+            $q->where('user_id', $user_id);
+        }
+
+        $items = $q->orderBy('date', 'desc')->get();
+        [$title, $user] = $this->resolveTitle('Laporan Realisasi Kegiatan', $user_id ?? 'all');
+
+        return $this->generatePdfReport('report.activity-realization-detail', 'landscape', compact(
+            'items', 'title', 'user', 'start_date', 'end_date'
+        ));
+    }
+
+    public function activiyTargetDetail(Request $request)
+    {
+        $year        = $request->get('year', now()->year);
+        $quarter     = $request->get('quarter');
+        $user_id     = $request->get('user_id');
+        $currentUser = Auth::user();
+
+        $q = ActivityTarget::with(['user:id,username,name', 'details.type'])
+            ->where('year', $year);
+
+        if ($quarter) $q->where('quarter', $quarter);
+
+        if ($currentUser->role === User::Role_Agronomist) {
+            $childIds = User::where('parent_id', $currentUser->id)->pluck('id')->push($currentUser->id);
+            $q->whereIn('user_id', $childIds);
+        }
+        if ($user_id && $user_id !== 'all') {
+            $q->where('user_id', $user_id);
+        }
+
+        $items = $q->orderBy('year')->orderBy('quarter')->get();
+        [$title, $user] = $this->resolveTitle('Laporan Target Kegiatan', $user_id ?? 'all');
+
+        return $this->generatePdfReport('report.activity-target-detail', 'landscape', compact(
+            'items', 'title', 'user', 'year'
+        ));
+    }
+}

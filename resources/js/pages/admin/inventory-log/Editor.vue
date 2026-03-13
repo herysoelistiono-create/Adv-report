@@ -1,0 +1,209 @@
+<script setup>
+import { router, useForm, usePage } from "@inertiajs/vue3";
+import { handleSubmit } from "@/helpers/client-req-handler";
+import { useProductFilter } from "@/composables/useProductFilter";
+import LocaleNumberInput from "@/components/LocaleNumberInput.vue";
+import DatePicker from "@/components/DatePicker.vue";
+import { useCustomerFilter } from "@/helpers/useCustomerFilter";
+import { formatDateForEditing } from "@/helpers/formatter";
+
+const page = usePage();
+const title = (!!page.props.data.id ? "Edit" : "Tambah") + " Log Inventori";
+
+const form = useForm({
+  id: page.props.data.id,
+  product_id: page.props.data.product_id,
+  customer_id: page.props.data.customer_id,
+  user_id: page.props.data.user_id,
+  area: page.props.data.area,
+  lot_package: page.props.data.lot_package,
+  quantity: parseFloat(page.props.data.quantity) || 0,
+  base_quantity: parseInt(page.props.data.base_quantity) || 0,
+  check_date: formatDateForEditing(page.props.data.check_date),
+  notes: page.props.data.notes,
+});
+
+const areas = [{ value: "West Java", label: "West Java" }];
+const users = page.props.users.map((u) => {
+  return {
+    value: u.id,
+    label: u.name,
+  };
+});
+
+const submit = () =>
+  handleSubmit({ form, url: route("admin.inventory-log.save") });
+
+const { filteredProducts, filterProducts } = useProductFilter(
+  page.props.products
+);
+
+const { filteredCustomers, filterCustomers } = useCustomerFilter(
+  page.props.customers
+);
+
+const updateQuantity = () => {
+  if (!form.product_id) return;
+  const product = page.props.products.find((p) => p.id === form.product_id);
+  if (!product) return;
+  form.quantity = (form.base_quantity * product.weight) / 1000;
+};
+</script>
+
+<template>
+  <i-head :title="title" />
+  <authenticated-layout>
+    <template #title>{{ title }}</template>
+    <q-page class="row justify-center">
+      <div class="col col-md-6 q-pa-sm">
+        <q-form class="row" @submit.prevent="submit">
+          <q-card square flat bordered class="col">
+            <q-card-section class="q-pt-md">
+              <input type="hidden" name="id" v-model="form.id" />
+              <date-picker
+                v-model="form.check_date"
+                label="Tanggal Cek"
+                :error="!!form.errors.check_date"
+                :disable="form.processing"
+                :error-message="form.errors.check_date"
+                hide-bottom-space
+              />
+              <q-select
+                v-if="page.props.auth.user.role == 'admin'"
+                v-model="form.user_id"
+                label="Checker"
+                clearable
+                :options="users"
+                map-options
+                emit-value
+                :error="!!form.errors.user_id"
+                :disable="form.processing"
+                :error-message="form.errors.user_id"
+                hide-bottom-space
+              />
+              <q-select
+                v-model="form.area"
+                label="Area"
+                :options="areas"
+                emit-value
+                map-options
+                option-label="label"
+                option-value="value"
+                :error="!!form.errors.area"
+                :disable="form.processing"
+                :error-message="form.errors.area"
+                hide-bottom-space
+              >
+                <template v-slot:no-option>
+                  <q-item>
+                    <q-item-section>Area tidak ditemukan</q-item-section>
+                  </q-item>
+                </template>
+              </q-select>
+              <q-select
+                v-model="form.product_id"
+                label="Varietas"
+                use-input
+                input-debounce="300"
+                clearable
+                :options="filteredProducts"
+                map-options
+                emit-value
+                @filter="filterProducts"
+                :error="!!form.errors.product_id"
+                :disable="form.processing"
+                :error-message="form.errors.product_id"
+                hide-bottom-space
+              >
+                <template v-slot:no-option>
+                  <q-item>
+                    <q-item-section>Varietas tidak ditemukan</q-item-section>
+                  </q-item>
+                </template>
+              </q-select>
+              <q-select
+                v-model="form.customer_id"
+                label="Client"
+                use-input
+                input-debounce="300"
+                clearable
+                :options="filteredCustomers"
+                map-options
+                emit-value
+                @filter="filterCustomers"
+                :error="!!form.errors.customer_id"
+                :disable="form.processing"
+                :error-message="form.errors.customer_id"
+                hide-bottom-space
+              >
+                <template v-slot:no-option>
+                  <q-item>
+                    <q-item-section>Client tidak ditemukan</q-item-section>
+                  </q-item>
+                </template>
+              </q-select>
+              <q-input
+                v-model.trim="form.lot_package"
+                label="Lot Package"
+                lazy-rules
+                :disable="form.processing"
+                :error="!!form.errors.lot_package"
+                :error-message="form.errors.lot_package"
+                hide-bottom-space
+              />
+              <LocaleNumberInput
+                v-model:modelValue="form.base_quantity"
+                label="Quantity (pcs)"
+                lazyRules
+                :disable="form.processing"
+                :error="!!form.errors.base_quantity"
+                :errorMessage="form.errors.base_quantity"
+                @change="updateQuantity"
+                hide-bottom-space
+              />
+              <LocaleNumberInput
+                v-model:modelValue="form.quantity"
+                label="Quantity (kg)"
+                lazyRules
+                readonly
+                :maxDecimals="3"
+                :disable="form.processing"
+                :error="!!form.errors.quantity"
+                :errorMessage="form.errors.quantity"
+                hide-bottom-space
+              />
+              <q-input
+                v-model.trim="form.notes"
+                type="textarea"
+                autogrow
+                counter
+                maxlength="1000"
+                label="Catatan"
+                lazy-rules
+                :disable="form.processing"
+                :error="!!form.errors.notes"
+                :error-message="form.errors.notes"
+                hide-bottom-space
+              />
+            </q-card-section>
+            <q-card-section class="q-gutter-sm">
+              <q-btn
+                icon="save"
+                type="submit"
+                label="Simpan"
+                color="primary"
+                :disable="form.processing"
+              />
+              <q-btn
+                icon="cancel"
+                label="Batal"
+                :disable="form.processing"
+                @click="router.get(route('admin.inventory-log.index'))"
+              />
+            </q-card-section>
+          </q-card>
+        </q-form>
+      </div>
+    </q-page>
+  </authenticated-layout>
+</template>
