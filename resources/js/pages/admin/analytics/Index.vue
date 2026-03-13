@@ -191,11 +191,11 @@ const monthlyChartOption = computed(() => {
   <authenticated-layout>
     <template #title>{{ title }}</template>
 
-    <q-page class="q-pa-xs q-pa-sm-sm">
+    <q-page class="q-pa-xs page-container">
       <!-- ── Filter ── -->
       <q-card flat bordered square>
         <q-card-section class="q-pa-sm">
-          <div class="row q-col-gutter-xs q-col-gutter-sm-sm items-end">
+          <div class="row q-col-gutter-xs items-end">
             <div class="col-xs-12 col-sm-4 col-md-3">
               <q-select
                 v-model="form.fiscal_year"
@@ -244,7 +244,7 @@ const monthlyChartOption = computed(() => {
       <div class="row q-col-gutter-xs q-mt-xs">
         <div class="col-xs-6 col-md-3">
           <q-card flat bordered square class="kpi-card">
-            <q-card-section class="q-pa-xs q-pa-sm-sm">
+            <q-card-section class="q-pa-xs">
               <div class="text-caption text-grey-7">Total Penjualan</div>
               <div class="kpi-value text-weight-bold">Rp {{ formatNumber(currentStats.total_sales || 0) }}</div>
               <template v-if="prevStats">
@@ -259,7 +259,7 @@ const monthlyChartOption = computed(() => {
 
         <div class="col-xs-6 col-md-3">
           <q-card flat bordered square class="kpi-card">
-            <q-card-section class="q-pa-xs q-pa-sm-sm">
+            <q-card-section class="q-pa-xs">
               <div class="text-caption text-grey-7">Transaksi</div>
               <div class="kpi-value text-weight-bold">{{ formatNumber(currentStats.total_transactions || 0) }}</div>
               <template v-if="prevStats">
@@ -274,7 +274,7 @@ const monthlyChartOption = computed(() => {
 
         <div class="col-xs-6 col-md-3">
           <q-card flat bordered square class="kpi-card">
-            <q-card-section class="q-pa-xs q-pa-sm-sm">
+            <q-card-section class="q-pa-xs">
               <div class="text-caption text-grey-7">Distributor Aktif</div>
               <div class="kpi-value text-weight-bold">{{ formatNumber(currentStats.active_distributors || 0) }}</div>
               <div class="text-caption text-grey-7 kpi-prev" v-if="prevStats">Prev: {{ formatNumber(prevStats.active_distributors || 0) }}</div>
@@ -284,7 +284,7 @@ const monthlyChartOption = computed(() => {
 
         <div class="col-xs-6 col-md-3">
           <q-card flat bordered square class="kpi-card">
-            <q-card-section class="q-pa-xs q-pa-sm-sm">
+            <q-card-section class="q-pa-xs">
               <div class="text-caption text-grey-7">Total Qty</div>
               <div class="kpi-value text-weight-bold">{{ formatNumber(currentStats.total_qty || 0, 'id-ID', 2) }}</div>
               <div class="text-caption text-grey-7 kpi-prev" v-if="prevStats">Prev: {{ formatNumber(prevStats.total_qty || 0, 'id-ID', 2) }}</div>
@@ -304,12 +304,13 @@ const monthlyChartOption = computed(() => {
                   FY{{ form.fiscal_year }}/{{ (form.fiscal_year || 0) + 1 }} vs FY{{ form.compare_year }}/{{ (form.compare_year || 0) + 1 }}
                 </span>
               </div>
-              <ECharts
-                v-if="monthlyRows.length"
-                :option="monthlyChartOption"
-                autoresize
-                class="monthly-chart"
-              />
+              <div v-if="monthlyRows.length" class="chart-wrap">
+                <ECharts
+                  :option="monthlyChartOption"
+                  autoresize
+                  class="monthly-chart"
+                />
+              </div>
               <div v-else class="text-center text-grey q-py-md">Tidak ada data</div>
             </q-card-section>
           </q-card>
@@ -337,9 +338,9 @@ const monthlyChartOption = computed(() => {
                     <tr v-for="row in monthlyRows" :key="row.month">
                       <td class="text-no-wrap">{{ dayjs(`${row.month}-01`).format('MMM YYYY') }}</td>
                       <td class="text-right">{{ formatNumber(row.transactions || 0) }}</td>
-                      <td class="text-right text-no-wrap">{{ formatNumber(row.current || 0) }}</td>
-                      <td class="text-right text-no-wrap" v-if="form.compare_year">{{ formatNumber(row.previous || 0) }}</td>
-                      <td class="text-right text-no-wrap" v-if="form.compare_year">
+                      <td class="text-right">{{ formatNumber(row.current || 0) }}</td>
+                      <td class="text-right" v-if="form.compare_year">{{ formatNumber(row.previous || 0) }}</td>
+                      <td class="text-right" v-if="form.compare_year">
                         <span v-if="row.growth !== null" :class="row.growth >= 0 ? 'text-green-8 text-weight-bold' : 'text-red-8 text-weight-bold'">
                           {{ row.growth >= 0 ? '+' : '' }}{{ formatNumber(row.growth, 'id-ID', 1) }}%
                         </span>
@@ -367,14 +368,14 @@ const monthlyChartOption = computed(() => {
                 <table class="data-table">
                   <thead><tr>
                     <th class="text-left">BS</th>
-                    <th class="text-right" style="width:44px">Trx</th>
-                    <th class="text-right" style="width:110px">Total (Rp)</th>
+                    <th class="text-right" style="width:18%">Trx</th>
+                    <th class="text-right" style="width:38%">Total (Rp)</th>
                   </tr></thead>
                   <tbody>
                     <tr v-for="row in salesByBS" :key="`bs-${row.id}`">
                       <td class="td-name">{{ row.user_name }}</td>
                       <td class="text-right">{{ formatNumber(row.transaction_count || 0) }}</td>
-                      <td class="text-right text-no-wrap">{{ formatNumber(row.total_sales || 0) }}</td>
+                      <td class="text-right">{{ formatNumber(row.total_sales || 0) }}</td>
                     </tr>
                     <tr v-if="!salesByBS.length"><td colspan="3" class="text-center text-grey q-pa-sm">Tidak ada data</td></tr>
                   </tbody>
@@ -392,14 +393,14 @@ const monthlyChartOption = computed(() => {
                 <table class="data-table">
                   <thead><tr>
                     <th class="text-left">Distributor</th>
-                    <th class="text-right" style="width:44px">Trx</th>
-                    <th class="text-right" style="width:110px">Total (Rp)</th>
+                    <th class="text-right" style="width:18%">Trx</th>
+                    <th class="text-right" style="width:38%">Total (Rp)</th>
                   </tr></thead>
                   <tbody>
                     <tr v-for="row in salesByDistributor" :key="`dist-${row.id}`">
                       <td class="td-name">{{ row.distributor_name }}</td>
                       <td class="text-right">{{ formatNumber(row.transaction_count || 0) }}</td>
-                      <td class="text-right text-no-wrap">{{ formatNumber(row.total_sales || 0) }}</td>
+                      <td class="text-right">{{ formatNumber(row.total_sales || 0) }}</td>
                     </tr>
                     <tr v-if="!salesByDistributor.length"><td colspan="3" class="text-center text-grey q-pa-sm">Tidak ada data</td></tr>
                   </tbody>
@@ -420,14 +421,14 @@ const monthlyChartOption = computed(() => {
                 <table class="data-table">
                   <thead><tr>
                     <th class="text-left">Produk</th>
-                    <th class="text-right" style="width:60px">Qty</th>
-                    <th class="text-right" style="width:110px">Total (Rp)</th>
+                    <th class="text-right" style="width:22%">Qty</th>
+                    <th class="text-right" style="width:38%">Total (Rp)</th>
                   </tr></thead>
                   <tbody>
                     <tr v-for="row in salesByProduct" :key="`prod-${row.id}`">
                       <td class="td-name">{{ row.product_name }}</td>
                       <td class="text-right">{{ formatNumber(row.total_quantity || 0, 'id-ID', 2) }}</td>
-                      <td class="text-right text-no-wrap">{{ formatNumber(row.total_sales || 0) }}</td>
+                      <td class="text-right">{{ formatNumber(row.total_sales || 0) }}</td>
                     </tr>
                     <tr v-if="!salesByProduct.length"><td colspan="3" class="text-center text-grey q-pa-sm">Tidak ada data</td></tr>
                   </tbody>
@@ -444,20 +445,20 @@ const monthlyChartOption = computed(() => {
               <div class="table-scroll">
                 <table class="data-table">
                   <thead><tr>
-                    <th class="text-left" style="width:70px">Tipe</th>
+                    <th class="text-left" style="width:24%">Tipe</th>
                     <th class="text-left">Nama</th>
-                    <th class="text-right" style="width:110px">Total (Rp)</th>
+                    <th class="text-right" style="width:38%">Total (Rp)</th>
                   </tr></thead>
                   <tbody>
                     <tr v-for="row in topDistributors" :key="`top-dist-${row.id}`">
                       <td><q-chip dense color="blue-1" text-color="blue-9" class="q-ma-none chip-sm">Dist</q-chip></td>
                       <td class="td-name">{{ row.name }}</td>
-                      <td class="text-right text-no-wrap">{{ formatNumber(row.total_sales || 0) }}</td>
+                      <td class="text-right">{{ formatNumber(row.total_sales || 0) }}</td>
                     </tr>
                     <tr v-for="row in topRetailers" :key="`top-ret-${row.id}`">
                       <td><q-chip dense color="green-1" text-color="green-9" class="q-ma-none chip-sm">Ret</q-chip></td>
                       <td class="td-name">{{ row.name }}</td>
-                      <td class="text-right text-no-wrap">{{ formatNumber(row.total_sales || 0) }}</td>
+                      <td class="text-right">{{ formatNumber(row.total_sales || 0) }}</td>
                     </tr>
                     <tr v-if="!topDistributors.length && !topRetailers.length"><td colspan="3" class="text-center text-grey q-pa-sm">Tidak ada data</td></tr>
                   </tbody>
@@ -481,14 +482,14 @@ const monthlyChartOption = computed(() => {
                 <table class="data-table">
                   <thead><tr>
                     <th class="text-left">Wilayah</th>
-                    <th class="text-right" style="width:50px">Aktvts</th>
-                    <th class="text-right" style="width:110px">Penjualan (Rp)</th>
+                    <th class="text-right" style="width:20%">Aktvts</th>
+                    <th class="text-right" style="width:38%">Penjualan (Rp)</th>
                   </tr></thead>
                   <tbody>
                     <tr v-for="row in activityVsSales" :key="`avs-${row.province_id}`">
                       <td class="td-name">{{ row.province_name }}</td>
                       <td class="text-right">{{ formatNumber(row.activity_count || 0) }}</td>
-                      <td class="text-right text-no-wrap">{{ formatNumber(row.total_sales || 0) }}</td>
+                      <td class="text-right">{{ formatNumber(row.total_sales || 0) }}</td>
                     </tr>
                     <tr v-if="!activityVsSales.length && !loadingActivityVsSales"><td colspan="3" class="text-center text-grey q-pa-sm">Tidak ada data</td></tr>
                   </tbody>
@@ -506,9 +507,9 @@ const monthlyChartOption = computed(() => {
                 <table class="data-table">
                   <thead><tr>
                     <th class="text-left">Produk</th>
-                    <th class="text-right" style="width:70px">Target</th>
-                    <th class="text-right" style="width:70px">Aktual</th>
-                    <th class="text-right" style="width:76px">Capai</th>
+                    <th class="text-right" style="width:24%">Target</th>
+                    <th class="text-right" style="width:24%">Aktual</th>
+                    <th class="text-right" style="width:22%">Capai</th>
                   </tr></thead>
                   <tbody>
                     <tr v-for="row in targetVsActual" :key="`target-${row.product_name}`">
@@ -516,9 +517,9 @@ const monthlyChartOption = computed(() => {
                         {{ row.product_name }}
                         <span class="text-caption text-grey-6" v-if="row.uom">({{ row.uom }})</span>
                       </td>
-                      <td class="text-right text-no-wrap">{{ formatNumber(row.total_target || 0, 'id-ID', 2) }}</td>
-                      <td class="text-right text-no-wrap">{{ formatNumber(row.total_actual || 0, 'id-ID', 2) }}</td>
-                      <td class="text-right text-no-wrap">
+                      <td class="text-right">{{ formatNumber(row.total_target || 0, 'id-ID', 2) }}</td>
+                      <td class="text-right">{{ formatNumber(row.total_actual || 0, 'id-ID', 2) }}</td>
+                      <td class="text-right">
                         <q-badge v-if="row.achievement !== null" :color="row.achievement >= 100 ? 'green-8' : 'orange-8'">
                           {{ formatNumber(row.achievement || 0, 'id-ID', 1) }}%
                         </q-badge>
@@ -538,8 +539,15 @@ const monthlyChartOption = computed(() => {
 </template>
 
 <style scoped>
+/* Cegah seluruh halaman scroll ke kanan */
+.page-container {
+  max-width: 100%;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
 .kpi-card .kpi-value {
-  font-size: clamp(0.8rem, 3.5vw, 1.1rem);
+  font-size: clamp(0.78rem, 3vw, 1.05rem);
   line-height: 1.25;
   word-break: break-all;
 }
@@ -549,44 +557,60 @@ const monthlyChartOption = computed(() => {
   text-overflow: ellipsis;
   max-width: 100%;
 }
+
+/* Wrapper chart: cegah canvas ECharts overflow */
+.chart-wrap {
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+}
+.monthly-chart {
+  height: 200px;
+  width: 100% !important;
+  max-width: 100%;
+}
+
+/* Tabel compact untuk mobile */
 .table-scroll {
+  width: 100%;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
 }
 .data-table {
   width: 100%;
+  max-width: 100%;
   border-collapse: collapse;
-  font-size: 0.78rem;
+  font-size: 0.76rem;
+  table-layout: fixed;
 }
 .data-table th {
-  padding: 4px 6px;
+  padding: 3px 5px;
   background: #f5f5f5;
   border-bottom: 1px solid #ddd;
-  white-space: nowrap;
   font-weight: 600;
   color: #444;
+  /* biarkan header wrap agar tidak memaksa lebar */
+  white-space: normal;
+  word-break: break-word;
 }
 .data-table td {
-  padding: 4px 6px;
+  padding: 3px 5px;
   border-bottom: 1px solid #eeeeee;
   vertical-align: middle;
+  overflow: hidden;
 }
 .data-table tr:last-child td { border-bottom: none; }
 .td-name {
   word-break: break-word;
-  min-width: 80px;
 }
 .chip-sm {
   font-size: 0.7rem;
   height: 18px;
   padding: 0 6px;
 }
-.monthly-chart {
-  height: 220px;
-  width: 100%;
-}
+
 @media (min-width: 600px) {
-  .data-table { font-size: 0.85rem; }
-  .monthly-chart { height: 280px; }
+  .data-table { font-size: 0.84rem; }
+  .monthly-chart { height: 260px; }
 }
 </style>
