@@ -57,15 +57,23 @@ const pctChange = (currentValue, previousValue) => {
   return ((current - previous) / previous) * 100;
 };
 
+// Posisi bulan dalam tahun fiskal: Apr=1, May=2, ..., Mar=12
+const fiscalMonthPos = (yyyyMm) => {
+  const m = parseInt(yyyyMm.split('-')[1]);
+  return m >= 4 ? m - 3 : m + 9;
+};
+
 const monthlyRows = computed(() => {
+  // Map prevMonthlySales by fiscal-month position (1=Apr..12=Mar)
+  // Ini fix bug: FY2025 Apr='2025-04', FY2024 Apr='2024-04' - kunci beda
   const prevMap = {};
   prevMonthlySales.value.forEach((item) => {
-    prevMap[item.month] = Number(item.total_sales || 0);
+    prevMap[fiscalMonthPos(item.month)] = Number(item.total_sales || 0);
   });
 
   return monthlySales.value.map((item) => {
     const current = Number(item.total_sales || 0);
-    const prev = Number(prevMap[item.month] || 0);
+    const prev = prevMap[fiscalMonthPos(item.month)] || 0;
     return {
       month: item.month,
       current,
@@ -183,11 +191,11 @@ const monthlyChartOption = computed(() => {
   <authenticated-layout>
     <template #title>{{ title }}</template>
 
-    <q-page class="q-pa-sm">
+    <q-page class="q-pa-xs q-pa-sm-sm">
       <!-- ── Filter ── -->
       <q-card flat bordered square>
-        <q-card-section>
-          <div class="row q-col-gutter-sm items-end">
+        <q-card-section class="q-pa-sm">
+          <div class="row q-col-gutter-xs q-col-gutter-sm-sm items-end">
             <div class="col-xs-12 col-sm-4 col-md-3">
               <q-select
                 v-model="form.fiscal_year"
@@ -224,135 +232,125 @@ const monthlyChartOption = computed(() => {
               />
             </div>
 
-            <div class="col-xs-12 col-sm-12 col-md-3 row q-gutter-sm">
-              <q-btn color="primary" icon="search" label="Terapkan" @click="applyFilters" />
-              <q-btn color="grey-7" flat icon="refresh" label="Reset" @click="resetFilters" />
+            <div class="col-xs-12 col-sm-12 col-md-3 row q-gutter-xs">
+              <q-btn color="primary" icon="search" label="Terapkan" dense @click="applyFilters" />
+              <q-btn color="grey-7" flat icon="refresh" label="Reset" dense @click="resetFilters" />
             </div>
           </div>
         </q-card-section>
       </q-card>
 
       <!-- ── KPI Cards ── -->
-      <div class="row q-col-gutter-sm q-mt-sm">
-        <div class="col-xs-6 col-sm-6 col-md-3">
+      <div class="row q-col-gutter-xs q-mt-xs">
+        <div class="col-xs-6 col-md-3">
           <q-card flat bordered square class="kpi-card">
-            <q-card-section class="q-pa-sm">
-              <div class="text-caption text-grey-7 kpi-label">Total Penjualan</div>
-              <div class="text-weight-bold kpi-value">Rp {{ formatNumber(currentStats.total_sales || 0) }}</div>
-              <div class="text-caption" v-if="prevStats">
-                <span class="text-grey-7">Prev: Rp {{ formatNumber(prevStats.total_sales || 0) }}</span>
-                <q-badge
-                  class="q-ml-xs"
-                  :color="pctChange(currentStats.total_sales, prevStats.total_sales) >= 0 ? 'green-8' : 'red-8'"
-                >
-                  {{ (pctChange(currentStats.total_sales, prevStats.total_sales) >= 0 ? '+' : '') }}{{ formatNumber(pctChange(currentStats.total_sales, prevStats.total_sales) || 0, 'id-ID', 1) }}%
+            <q-card-section class="q-pa-xs q-pa-sm-sm">
+              <div class="text-caption text-grey-7">Total Penjualan</div>
+              <div class="kpi-value text-weight-bold">Rp {{ formatNumber(currentStats.total_sales || 0) }}</div>
+              <template v-if="prevStats">
+                <div class="text-caption text-grey-7 kpi-prev">Prev: Rp {{ formatNumber(prevStats.total_sales || 0) }}</div>
+                <q-badge dense :color="pctChange(currentStats.total_sales, prevStats.total_sales) >= 0 ? 'green-8' : 'red-8'">
+                  {{ pctChange(currentStats.total_sales, prevStats.total_sales) >= 0 ? '+' : '' }}{{ formatNumber(pctChange(currentStats.total_sales, prevStats.total_sales) || 0, 'id-ID', 1) }}%
                 </q-badge>
-              </div>
+              </template>
             </q-card-section>
           </q-card>
         </div>
 
-        <div class="col-xs-6 col-sm-6 col-md-3">
+        <div class="col-xs-6 col-md-3">
           <q-card flat bordered square class="kpi-card">
-            <q-card-section class="q-pa-sm">
-              <div class="text-caption text-grey-7 kpi-label">Transaksi</div>
-              <div class="text-weight-bold kpi-value">{{ formatNumber(currentStats.total_transactions || 0) }}</div>
-              <div class="text-caption" v-if="prevStats">
-                <span class="text-grey-7">Prev: {{ formatNumber(prevStats.total_transactions || 0) }}</span>
-                <q-badge
-                  class="q-ml-xs"
-                  :color="pctChange(currentStats.total_transactions, prevStats.total_transactions) >= 0 ? 'green-8' : 'red-8'"
-                >
-                  {{ (pctChange(currentStats.total_transactions, prevStats.total_transactions) >= 0 ? '+' : '') }}{{ formatNumber(pctChange(currentStats.total_transactions, prevStats.total_transactions) || 0, 'id-ID', 1) }}%
+            <q-card-section class="q-pa-xs q-pa-sm-sm">
+              <div class="text-caption text-grey-7">Transaksi</div>
+              <div class="kpi-value text-weight-bold">{{ formatNumber(currentStats.total_transactions || 0) }}</div>
+              <template v-if="prevStats">
+                <div class="text-caption text-grey-7 kpi-prev">Prev: {{ formatNumber(prevStats.total_transactions || 0) }}</div>
+                <q-badge dense :color="pctChange(currentStats.total_transactions, prevStats.total_transactions) >= 0 ? 'green-8' : 'red-8'">
+                  {{ pctChange(currentStats.total_transactions, prevStats.total_transactions) >= 0 ? '+' : '' }}{{ formatNumber(pctChange(currentStats.total_transactions, prevStats.total_transactions) || 0, 'id-ID', 1) }}%
                 </q-badge>
-              </div>
+              </template>
             </q-card-section>
           </q-card>
         </div>
 
-        <div class="col-xs-6 col-sm-6 col-md-3">
+        <div class="col-xs-6 col-md-3">
           <q-card flat bordered square class="kpi-card">
-            <q-card-section class="q-pa-sm">
-              <div class="text-caption text-grey-7 kpi-label">Distributor Aktif</div>
-              <div class="text-weight-bold kpi-value">{{ formatNumber(currentStats.active_distributors || 0) }}</div>
-              <div class="text-caption text-grey-7" v-if="prevStats">
-                Prev: {{ formatNumber(prevStats.active_distributors || 0) }}
-              </div>
+            <q-card-section class="q-pa-xs q-pa-sm-sm">
+              <div class="text-caption text-grey-7">Distributor Aktif</div>
+              <div class="kpi-value text-weight-bold">{{ formatNumber(currentStats.active_distributors || 0) }}</div>
+              <div class="text-caption text-grey-7 kpi-prev" v-if="prevStats">Prev: {{ formatNumber(prevStats.active_distributors || 0) }}</div>
             </q-card-section>
           </q-card>
         </div>
 
-        <div class="col-xs-6 col-sm-6 col-md-3">
+        <div class="col-xs-6 col-md-3">
           <q-card flat bordered square class="kpi-card">
-            <q-card-section class="q-pa-sm">
-              <div class="text-caption text-grey-7 kpi-label">Total Qty</div>
-              <div class="text-weight-bold kpi-value">{{ formatNumber(currentStats.total_qty || 0, 'id-ID', 2) }}</div>
-              <div class="text-caption text-grey-7" v-if="prevStats">
-                Prev: {{ formatNumber(prevStats.total_qty || 0, 'id-ID', 2) }}
-              </div>
+            <q-card-section class="q-pa-xs q-pa-sm-sm">
+              <div class="text-caption text-grey-7">Total Qty</div>
+              <div class="kpi-value text-weight-bold">{{ formatNumber(currentStats.total_qty || 0, 'id-ID', 2) }}</div>
+              <div class="text-caption text-grey-7 kpi-prev" v-if="prevStats">Prev: {{ formatNumber(prevStats.total_qty || 0, 'id-ID', 2) }}</div>
             </q-card-section>
           </q-card>
         </div>
       </div>
 
       <!-- ── Line Chart Tren Bulanan ── -->
-      <div class="row q-col-gutter-sm q-mt-sm">
+      <div class="row q-mt-xs">
         <div class="col-12">
           <q-card flat bordered square>
-            <q-card-section>
-              <div class="text-subtitle1 text-weight-bold q-mb-sm">
+            <q-card-section class="q-pa-sm">
+              <div class="text-subtitle2 text-weight-bold">
                 Tren Penjualan Bulanan
-                <span v-if="form.compare_year" class="text-caption text-grey-7 q-ml-sm">
-                  FY {{ form.fiscal_year }}/{{ (form.fiscal_year || 0) + 1 }} vs FY {{ form.compare_year }}/{{ (form.compare_year || 0) + 1 }}
+                <span v-if="form.compare_year" class="text-caption text-grey-7 q-ml-xs">
+                  FY{{ form.fiscal_year }}/{{ (form.fiscal_year || 0) + 1 }} vs FY{{ form.compare_year }}/{{ (form.compare_year || 0) + 1 }}
                 </span>
               </div>
               <ECharts
                 v-if="monthlyRows.length"
                 :option="monthlyChartOption"
                 autoresize
-                style="height: 280px; width: 100%"
+                class="monthly-chart"
               />
-              <div v-else class="text-center text-grey q-py-lg">Tidak ada data</div>
+              <div v-else class="text-center text-grey q-py-md">Tidak ada data</div>
             </q-card-section>
           </q-card>
         </div>
       </div>
 
       <!-- ── Tabel Tren Bulanan ── -->
-      <div class="row q-col-gutter-sm q-mt-sm">
+      <div class="row q-mt-xs">
         <div class="col-12">
           <q-card flat bordered square>
-            <q-card-section>
-              <div class="text-subtitle1 text-weight-bold q-mb-sm">Detail Tren Bulanan</div>
-              <div class="overflow-auto">
-                <q-markup-table flat bordered square separator="cell" style="min-width: 480px">
+            <q-card-section class="q-pa-sm">
+              <div class="text-subtitle2 text-weight-bold q-mb-xs">Detail Tren Bulanan</div>
+              <div class="table-scroll">
+                <table class="data-table">
                   <thead>
                     <tr>
-                      <th class="text-left" style="min-width:90px">Bulan</th>
-                      <th class="text-right" style="min-width:70px">Trx</th>
-                      <th class="text-right" style="min-width:130px">Total (Rp)</th>
-                      <th class="text-right" style="min-width:130px" v-if="form.compare_year">Prev (Rp)</th>
-                      <th class="text-right" style="min-width:70px" v-if="form.compare_year">Growth</th>
+                      <th class="text-left">Bulan</th>
+                      <th class="text-right">Trx</th>
+                      <th class="text-right">Total (Rp)</th>
+                      <th class="text-right" v-if="form.compare_year">Prev (Rp)</th>
+                      <th class="text-right" v-if="form.compare_year">Growth</th>
                     </tr>
                   </thead>
                   <tbody>
                     <tr v-for="row in monthlyRows" :key="row.month">
                       <td class="text-no-wrap">{{ dayjs(`${row.month}-01`).format('MMM YYYY') }}</td>
                       <td class="text-right">{{ formatNumber(row.transactions || 0) }}</td>
-                      <td class="text-right text-no-wrap">Rp {{ formatNumber(row.current || 0) }}</td>
-                      <td class="text-right text-no-wrap" v-if="form.compare_year">Rp {{ formatNumber(row.previous || 0) }}</td>
+                      <td class="text-right text-no-wrap">{{ formatNumber(row.current || 0) }}</td>
+                      <td class="text-right text-no-wrap" v-if="form.compare_year">{{ formatNumber(row.previous || 0) }}</td>
                       <td class="text-right text-no-wrap" v-if="form.compare_year">
-                        <span v-if="row.growth !== null" :class="row.growth >= 0 ? 'text-green-8' : 'text-red-8'">
-                          {{ row.growth >= 0 ? '+' : '-' }}{{ formatNumber(Math.abs(row.growth), 'id-ID', 1) }}%
+                        <span v-if="row.growth !== null" :class="row.growth >= 0 ? 'text-green-8 text-weight-bold' : 'text-red-8 text-weight-bold'">
+                          {{ row.growth >= 0 ? '+' : '' }}{{ formatNumber(row.growth, 'id-ID', 1) }}%
                         </span>
                         <span v-else class="text-grey">-</span>
                       </td>
                     </tr>
                     <tr v-if="!monthlyRows.length">
-                      <td colspan="5" class="text-center text-grey">Tidak ada data</td>
+                      <td colspan="5" class="text-center text-grey q-pa-sm">Tidak ada data</td>
                     </tr>
                   </tbody>
-                </q-markup-table>
+                </table>
               </div>
             </q-card-section>
           </q-card>
@@ -360,31 +358,27 @@ const monthlyChartOption = computed(() => {
       </div>
 
       <!-- ── Penjualan per BS & Distributor ── -->
-      <div class="row q-col-gutter-sm q-mt-sm">
+      <div class="row q-col-gutter-xs q-mt-xs">
         <div class="col-xs-12 col-lg-6">
           <q-card flat bordered square>
-            <q-card-section>
-              <div class="text-subtitle1 text-weight-bold q-mb-sm">Penjualan per BS</div>
-              <div class="overflow-auto">
-                <q-markup-table flat bordered square separator="cell" style="min-width: 320px">
-                  <thead>
-                    <tr>
-                      <th class="text-left">BS</th>
-                      <th class="text-right" style="min-width:70px">Trx</th>
-                      <th class="text-right" style="min-width:130px">Total (Rp)</th>
-                    </tr>
-                  </thead>
+            <q-card-section class="q-pa-sm">
+              <div class="text-subtitle2 text-weight-bold q-mb-xs">Penjualan per BS</div>
+              <div class="table-scroll">
+                <table class="data-table">
+                  <thead><tr>
+                    <th class="text-left">BS</th>
+                    <th class="text-right" style="width:44px">Trx</th>
+                    <th class="text-right" style="width:110px">Total (Rp)</th>
+                  </tr></thead>
                   <tbody>
                     <tr v-for="row in salesByBS" :key="`bs-${row.id}`">
-                      <td class="ellipsis" style="max-width:150px" :title="row.user_name">{{ row.user_name }}</td>
+                      <td class="td-name">{{ row.user_name }}</td>
                       <td class="text-right">{{ formatNumber(row.transaction_count || 0) }}</td>
-                      <td class="text-right text-no-wrap">Rp {{ formatNumber(row.total_sales || 0) }}</td>
+                      <td class="text-right text-no-wrap">{{ formatNumber(row.total_sales || 0) }}</td>
                     </tr>
-                    <tr v-if="!salesByBS.length">
-                      <td colspan="3" class="text-center text-grey">Tidak ada data</td>
-                    </tr>
+                    <tr v-if="!salesByBS.length"><td colspan="3" class="text-center text-grey q-pa-sm">Tidak ada data</td></tr>
                   </tbody>
-                </q-markup-table>
+                </table>
               </div>
             </q-card-section>
           </q-card>
@@ -392,28 +386,24 @@ const monthlyChartOption = computed(() => {
 
         <div class="col-xs-12 col-lg-6">
           <q-card flat bordered square>
-            <q-card-section>
-              <div class="text-subtitle1 text-weight-bold q-mb-sm">Penjualan per Distributor</div>
-              <div class="overflow-auto">
-                <q-markup-table flat bordered square separator="cell" style="min-width: 320px">
-                  <thead>
-                    <tr>
-                      <th class="text-left">Distributor</th>
-                      <th class="text-right" style="min-width:70px">Trx</th>
-                      <th class="text-right" style="min-width:130px">Total (Rp)</th>
-                    </tr>
-                  </thead>
+            <q-card-section class="q-pa-sm">
+              <div class="text-subtitle2 text-weight-bold q-mb-xs">Penjualan per Distributor</div>
+              <div class="table-scroll">
+                <table class="data-table">
+                  <thead><tr>
+                    <th class="text-left">Distributor</th>
+                    <th class="text-right" style="width:44px">Trx</th>
+                    <th class="text-right" style="width:110px">Total (Rp)</th>
+                  </tr></thead>
                   <tbody>
                     <tr v-for="row in salesByDistributor" :key="`dist-${row.id}`">
-                      <td class="ellipsis" style="max-width:150px" :title="row.distributor_name">{{ row.distributor_name }}</td>
+                      <td class="td-name">{{ row.distributor_name }}</td>
                       <td class="text-right">{{ formatNumber(row.transaction_count || 0) }}</td>
-                      <td class="text-right text-no-wrap">Rp {{ formatNumber(row.total_sales || 0) }}</td>
+                      <td class="text-right text-no-wrap">{{ formatNumber(row.total_sales || 0) }}</td>
                     </tr>
-                    <tr v-if="!salesByDistributor.length">
-                      <td colspan="3" class="text-center text-grey">Tidak ada data</td>
-                    </tr>
+                    <tr v-if="!salesByDistributor.length"><td colspan="3" class="text-center text-grey q-pa-sm">Tidak ada data</td></tr>
                   </tbody>
-                </q-markup-table>
+                </table>
               </div>
             </q-card-section>
           </q-card>
@@ -421,31 +411,27 @@ const monthlyChartOption = computed(() => {
       </div>
 
       <!-- ── Penjualan per Produk & Top Performer ── -->
-      <div class="row q-col-gutter-sm q-mt-sm">
+      <div class="row q-col-gutter-xs q-mt-xs">
         <div class="col-xs-12 col-lg-6">
           <q-card flat bordered square>
-            <q-card-section>
-              <div class="text-subtitle1 text-weight-bold q-mb-sm">Penjualan per Produk</div>
-              <div class="overflow-auto">
-                <q-markup-table flat bordered square separator="cell" style="min-width: 320px">
-                  <thead>
-                    <tr>
-                      <th class="text-left">Produk</th>
-                      <th class="text-right" style="min-width:80px">Qty</th>
-                      <th class="text-right" style="min-width:130px">Total (Rp)</th>
-                    </tr>
-                  </thead>
+            <q-card-section class="q-pa-sm">
+              <div class="text-subtitle2 text-weight-bold q-mb-xs">Penjualan per Produk</div>
+              <div class="table-scroll">
+                <table class="data-table">
+                  <thead><tr>
+                    <th class="text-left">Produk</th>
+                    <th class="text-right" style="width:60px">Qty</th>
+                    <th class="text-right" style="width:110px">Total (Rp)</th>
+                  </tr></thead>
                   <tbody>
                     <tr v-for="row in salesByProduct" :key="`prod-${row.id}`">
-                      <td class="ellipsis" style="max-width:140px" :title="row.product_name">{{ row.product_name }}</td>
+                      <td class="td-name">{{ row.product_name }}</td>
                       <td class="text-right">{{ formatNumber(row.total_quantity || 0, 'id-ID', 2) }}</td>
-                      <td class="text-right text-no-wrap">Rp {{ formatNumber(row.total_sales || 0) }}</td>
+                      <td class="text-right text-no-wrap">{{ formatNumber(row.total_sales || 0) }}</td>
                     </tr>
-                    <tr v-if="!salesByProduct.length">
-                      <td colspan="3" class="text-center text-grey">Tidak ada data</td>
-                    </tr>
+                    <tr v-if="!salesByProduct.length"><td colspan="3" class="text-center text-grey q-pa-sm">Tidak ada data</td></tr>
                   </tbody>
-                </q-markup-table>
+                </table>
               </div>
             </q-card-section>
           </q-card>
@@ -453,33 +439,29 @@ const monthlyChartOption = computed(() => {
 
         <div class="col-xs-12 col-lg-6">
           <q-card flat bordered square>
-            <q-card-section>
-              <div class="text-subtitle1 text-weight-bold q-mb-sm">Top Performer</div>
-              <div class="overflow-auto">
-                <q-markup-table flat bordered square separator="cell" style="min-width: 320px">
-                  <thead>
-                    <tr>
-                      <th class="text-left" style="min-width:80px">Kategori</th>
-                      <th class="text-left">Nama</th>
-                      <th class="text-right" style="min-width:130px">Total (Rp)</th>
-                    </tr>
-                  </thead>
+            <q-card-section class="q-pa-sm">
+              <div class="text-subtitle2 text-weight-bold q-mb-xs">Top Performer</div>
+              <div class="table-scroll">
+                <table class="data-table">
+                  <thead><tr>
+                    <th class="text-left" style="width:70px">Tipe</th>
+                    <th class="text-left">Nama</th>
+                    <th class="text-right" style="width:110px">Total (Rp)</th>
+                  </tr></thead>
                   <tbody>
                     <tr v-for="row in topDistributors" :key="`top-dist-${row.id}`">
-                      <td class="text-no-wrap"><q-badge color="blue-8">Distributor</q-badge></td>
-                      <td class="ellipsis" style="max-width:130px" :title="row.name">{{ row.name }}</td>
-                      <td class="text-right text-no-wrap">Rp {{ formatNumber(row.total_sales || 0) }}</td>
+                      <td><q-chip dense color="blue-1" text-color="blue-9" class="q-ma-none chip-sm">Dist</q-chip></td>
+                      <td class="td-name">{{ row.name }}</td>
+                      <td class="text-right text-no-wrap">{{ formatNumber(row.total_sales || 0) }}</td>
                     </tr>
                     <tr v-for="row in topRetailers" :key="`top-ret-${row.id}`">
-                      <td class="text-no-wrap"><q-badge color="green-8">Retailer</q-badge></td>
-                      <td class="ellipsis" style="max-width:130px" :title="row.name">{{ row.name }}</td>
-                      <td class="text-right text-no-wrap">Rp {{ formatNumber(row.total_sales || 0) }}</td>
+                      <td><q-chip dense color="green-1" text-color="green-9" class="q-ma-none chip-sm">Ret</q-chip></td>
+                      <td class="td-name">{{ row.name }}</td>
+                      <td class="text-right text-no-wrap">{{ formatNumber(row.total_sales || 0) }}</td>
                     </tr>
-                    <tr v-if="!topDistributors.length && !topRetailers.length">
-                      <td colspan="3" class="text-center text-grey">Tidak ada data</td>
-                    </tr>
+                    <tr v-if="!topDistributors.length && !topRetailers.length"><td colspan="3" class="text-center text-grey q-pa-sm">Tidak ada data</td></tr>
                   </tbody>
-                </q-markup-table>
+                </table>
               </div>
             </q-card-section>
           </q-card>
@@ -487,34 +469,30 @@ const monthlyChartOption = computed(() => {
       </div>
 
       <!-- ── Aktivitas vs Penjualan & Target vs Aktual ── -->
-      <div class="row q-col-gutter-sm q-mt-sm">
+      <div class="row q-col-gutter-xs q-mt-xs">
         <div class="col-xs-12 col-lg-6">
           <q-card flat bordered square>
-            <q-card-section>
-              <div class="text-subtitle1 text-weight-bold q-mb-sm">Aktivitas vs Penjualan per Wilayah</div>
+            <q-card-section class="q-pa-sm">
+              <div class="text-subtitle2 text-weight-bold q-mb-xs">Aktivitas vs Penjualan</div>
               <q-inner-loading :showing="loadingActivityVsSales">
-                <q-spinner size="32px" color="primary" />
+                <q-spinner size="24px" color="primary" />
               </q-inner-loading>
-              <div class="overflow-auto">
-                <q-markup-table flat bordered square separator="cell" style="min-width: 300px">
-                  <thead>
-                    <tr>
-                      <th class="text-left">Wilayah</th>
-                      <th class="text-right" style="min-width:80px">Aktivitas</th>
-                      <th class="text-right" style="min-width:130px">Penjualan (Rp)</th>
-                    </tr>
-                  </thead>
+              <div class="table-scroll">
+                <table class="data-table">
+                  <thead><tr>
+                    <th class="text-left">Wilayah</th>
+                    <th class="text-right" style="width:50px">Aktvts</th>
+                    <th class="text-right" style="width:110px">Penjualan (Rp)</th>
+                  </tr></thead>
                   <tbody>
                     <tr v-for="row in activityVsSales" :key="`avs-${row.province_id}`">
-                      <td class="ellipsis" style="max-width:150px" :title="row.province_name">{{ row.province_name }}</td>
+                      <td class="td-name">{{ row.province_name }}</td>
                       <td class="text-right">{{ formatNumber(row.activity_count || 0) }}</td>
-                      <td class="text-right text-no-wrap">Rp {{ formatNumber(row.total_sales || 0) }}</td>
+                      <td class="text-right text-no-wrap">{{ formatNumber(row.total_sales || 0) }}</td>
                     </tr>
-                    <tr v-if="!activityVsSales.length && !loadingActivityVsSales">
-                      <td colspan="3" class="text-center text-grey">Tidak ada data</td>
-                    </tr>
+                    <tr v-if="!activityVsSales.length && !loadingActivityVsSales"><td colspan="3" class="text-center text-grey q-pa-sm">Tidak ada data</td></tr>
                   </tbody>
-                </q-markup-table>
+                </table>
               </div>
             </q-card-section>
           </q-card>
@@ -522,23 +500,21 @@ const monthlyChartOption = computed(() => {
 
         <div class="col-xs-12 col-lg-6">
           <q-card flat bordered square>
-            <q-card-section>
-              <div class="text-subtitle1 text-weight-bold q-mb-sm">Target vs Aktual</div>
-              <div class="overflow-auto">
-                <q-markup-table flat bordered square separator="cell" style="min-width: 360px">
-                  <thead>
-                    <tr>
-                      <th class="text-left">Produk</th>
-                      <th class="text-right" style="min-width:80px">Target</th>
-                      <th class="text-right" style="min-width:80px">Aktual</th>
-                      <th class="text-right" style="min-width:90px">Achievement</th>
-                    </tr>
-                  </thead>
+            <q-card-section class="q-pa-sm">
+              <div class="text-subtitle2 text-weight-bold q-mb-xs">Target vs Aktual</div>
+              <div class="table-scroll">
+                <table class="data-table">
+                  <thead><tr>
+                    <th class="text-left">Produk</th>
+                    <th class="text-right" style="width:70px">Target</th>
+                    <th class="text-right" style="width:70px">Aktual</th>
+                    <th class="text-right" style="width:76px">Capai</th>
+                  </tr></thead>
                   <tbody>
                     <tr v-for="row in targetVsActual" :key="`target-${row.product_name}`">
-                      <td class="ellipsis" style="max-width:140px" :title="`${row.product_name} (${row.uom || '-'})`">
+                      <td class="td-name">
                         {{ row.product_name }}
-                        <span class="text-caption text-grey">({{ row.uom || '-' }})</span>
+                        <span class="text-caption text-grey-6" v-if="row.uom">({{ row.uom }})</span>
                       </td>
                       <td class="text-right text-no-wrap">{{ formatNumber(row.total_target || 0, 'id-ID', 2) }}</td>
                       <td class="text-right text-no-wrap">{{ formatNumber(row.total_actual || 0, 'id-ID', 2) }}</td>
@@ -549,11 +525,9 @@ const monthlyChartOption = computed(() => {
                         <span v-else class="text-grey">-</span>
                       </td>
                     </tr>
-                    <tr v-if="!targetVsActual.length">
-                      <td colspan="4" class="text-center text-grey">Tidak ada data target</td>
-                    </tr>
+                    <tr v-if="!targetVsActual.length"><td colspan="4" class="text-center text-grey q-pa-sm">Tidak ada data</td></tr>
                   </tbody>
-                </q-markup-table>
+                </table>
               </div>
             </q-card-section>
           </q-card>
@@ -562,3 +536,57 @@ const monthlyChartOption = computed(() => {
     </q-page>
   </authenticated-layout>
 </template>
+
+<style scoped>
+.kpi-card .kpi-value {
+  font-size: clamp(0.8rem, 3.5vw, 1.1rem);
+  line-height: 1.25;
+  word-break: break-all;
+}
+.kpi-card .kpi-prev {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+}
+.data-table th {
+  padding: 4px 6px;
+  background: #f5f5f5;
+  border-bottom: 1px solid #ddd;
+  white-space: nowrap;
+  font-weight: 600;
+  color: #444;
+}
+.data-table td {
+  padding: 4px 6px;
+  border-bottom: 1px solid #eeeeee;
+  vertical-align: middle;
+}
+.data-table tr:last-child td { border-bottom: none; }
+.td-name {
+  word-break: break-word;
+  min-width: 80px;
+}
+.chip-sm {
+  font-size: 0.7rem;
+  height: 18px;
+  padding: 0 6px;
+}
+.monthly-chart {
+  height: 220px;
+  width: 100%;
+}
+@media (min-width: 600px) {
+  .data-table { font-size: 0.85rem; }
+  .monthly-chart { height: 280px; }
+}
+</style>
