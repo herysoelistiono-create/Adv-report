@@ -568,6 +568,8 @@ const monthlyChartOption = computed(() => {
 .stats-card {
   height: 100%;
   display: flex;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .kpi-card-content {
@@ -576,19 +578,34 @@ const monthlyChartOption = computed(() => {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  align-items: flex-start;
+  min-width: 0;
+  gap: 4px;
 }
 
 .kpi-card .kpi-value {
-  font-size: clamp(1rem, 3.2vw, 1.25rem);
+  width: 100%;
+  max-width: 100%;
+  font-size: clamp(0.92rem, 2.9vw, 1.15rem);
   line-height: 1.25;
-  overflow-wrap: anywhere;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .kpi-card .kpi-prev {
+  width: 100%;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 100%;
+}
+
+.kpi-card .q-badge {
+  align-self: flex-start;
+  width: auto;
+  max-width: 100%;
+  flex: 0 0 auto;
 }
 
 .chart-wrap {
