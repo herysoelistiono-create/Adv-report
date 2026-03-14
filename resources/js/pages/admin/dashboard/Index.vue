@@ -90,7 +90,6 @@ const onFilterChange = () => {
           <!-- Tahun -->
           <q-select
             class="custom-select col-xs-6 col-sm-4"
-            style="min-width: 120px"
             v-model="filter.year"
             :options="years"
             label="Tahun"
@@ -105,7 +104,6 @@ const onFilterChange = () => {
           <q-select
             v-if="userRole === 'bs' || (userRole === 'agronomist' && filter.view_type === 'month')"
             class="custom-select col-xs-6 col-sm-4"
-            style="min-width: 120px"
             v-model="filter.month"
             :options="months"
             label="Bulan"
@@ -120,7 +118,6 @@ const onFilterChange = () => {
           <q-select
             v-if="userRole === 'agronomist' && filter.view_type === 'quarter'"
             class="custom-select col-xs-6 col-sm-4"
-            style="min-width: 120px"
             v-model="filter.quarter"
             :options="quarterOptions"
             label="Kwartal"
@@ -161,3 +158,32 @@ const onFilterChange = () => {
     </div>
   </authenticated-layout>
 </template>
+
+<style scoped>
+/* Dashboard content wrappers — full width, no overflow */
+.q-pa-sm {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
+}
+
+/* Filter bar row — neutralize gutter negative margins */
+:deep(.filter-bar .row) {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  width: 100%;
+}
+
+/* Mobile: stack filter selects, shrink to fit */
+@media (max-width: 599px) {
+  :deep(.custom-select .q-field__label),
+  :deep(.custom-select .q-field__native) {
+    font-size: 0.78rem;
+  }
+  :deep(.q-btn-toggle .q-btn) {
+    font-size: 0.7rem;
+    padding: 2px 4px;
+  }
+}
+</style>

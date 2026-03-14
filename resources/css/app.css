@@ -66,6 +66,7 @@ a:hover {
   border-bottom: 1px solid #eee;
   padding: 0 !important;
   width: 100%;
+  overflow: hidden; /* clip gutter row negative-margin overflow */
 }
 
 .cursor-pointer {
@@ -182,6 +183,18 @@ table.detail tr:nth-child(even) td {
 
 .q-chip--dense {
   padding: 0 8px !important;
+}
+
+/* ── Mobile Responsive Base ── */
+html, body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
 }
 
 /** Tabel full height */

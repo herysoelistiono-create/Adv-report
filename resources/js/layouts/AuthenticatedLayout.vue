@@ -510,6 +510,18 @@ onMounted(() => {
   width: 100% !important;
   margin-left: 10px !important;
 }
+
+/* Ensure page content area does not overflow horizontally */
+.q-page-container {
+  overflow-x: hidden;
+  max-width: 100%;
+  width: 100%;
+}
+
+.q-layout {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
 </style>
 <style scoped>
 .q-toolbar {

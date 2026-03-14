@@ -281,18 +281,18 @@ const chartDonutOption = computed(() => {
 
       <!-- ── Baris 2: Charts ── -->
       <div class="row q-col-gutter-sm q-mb-sm">
-        <div class="col-xs-12 col-sm-7" style="min-width:0">
-          <q-card flat bordered class="bg-white">
-            <q-card-section class="q-pa-sm">
+        <div class="col-xs-12 col-sm-7" style="min-width:0;max-width:100%">
+          <q-card flat bordered class="bg-white" style="width:100%;max-width:100%;overflow:hidden">
+            <q-card-section class="q-pa-sm" style="overflow:hidden">
               <div class="chart-title">Kegiatan per BS</div>
-              <ECharts :option="chartBarOption" autoresize style="height: 210px; width: 100%; min-width: 0" />
+              <ECharts :option="chartBarOption" autoresize style="height: 210px; width: 100%; min-width: 0; display: block;" />
             </q-card-section>
           </q-card>
         </div>
-        <div class="col-xs-12 col-sm-5" style="min-width:0">
-          <q-card flat bordered class="bg-white">
-            <q-card-section class="q-pa-sm">
-              <ECharts :option="chartDonutOption" autoresize style="height: 240px; width: 100%; min-width: 0" />
+        <div class="col-xs-12 col-sm-5" style="min-width:0;max-width:100%">
+          <q-card flat bordered class="bg-white" style="width:100%;max-width:100%;overflow:hidden">
+            <q-card-section class="q-pa-sm" style="overflow:hidden">
+              <ECharts :option="chartDonutOption" autoresize style="height: 240px; width: 100%; min-width: 0; display: block;" />
             </q-card-section>
           </q-card>
         </div>
@@ -381,7 +381,8 @@ const chartDonutOption = computed(() => {
 .dashboard-shell {
   width: 100%;
   max-width: 100%;
-  overflow-x: clip;
+  overflow-x: hidden;
+  box-sizing: border-box;
 }
 
 /* ── Stat mini ── */
@@ -542,20 +543,38 @@ const chartDonutOption = computed(() => {
 .col-grand  { color: #1565c0; font-weight: 700; }
 
 /* ── Prevent outer horizontal scroll ── */
-:deep(.q-card) { min-width: 0; }
+:deep(.q-card) { min-width: 0; max-width: 100%; }
+:deep(.row) { min-width: 0; }
 :deep(.row.q-col-gutter-sm),
 :deep(.row.q-col-gutter-xs) {
   margin-left: 0 !important;
   margin-right: 0 !important;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 :deep(.row.q-col-gutter-sm > [class*='col-']),
 :deep(.row.q-col-gutter-xs > [class*='col-']) {
   padding-left: 4px !important;
   padding-right: 4px !important;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  flex-shrink: 1;
+}
+/* All col-* elements must not overflow */
+:deep([class*='col-']) {
+  min-width: 0;
+  max-width: 100%;
 }
 
 /* ── Mobile tweaks ── */
 @media (max-width: 599px) {
+  .dashboard-shell {
+    padding: 0;
+    width: 100%;
+    max-width: 100%;
+  }
   .stat-val { font-size: 1rem; }
   .stat-lbl { font-size: 0.6rem; }
   .kpi-badge { font-size: 0.9rem; padding: 2px 7px; }
@@ -564,5 +583,11 @@ const chartDonutOption = computed(() => {
   .agro-table th { font-size: 0.64rem; }
   .agro-table th,
   .agro-table td { padding: 3px 4px; }
+  /* KPI per-type: 1 column on very narrow screens */
+  :deep(.col-6) { min-width: 0; }
+  /* Charts full width on mobile */
+  :deep(.q-card-section) {
+    padding: 6px !important;
+  }
 }
 </style>
