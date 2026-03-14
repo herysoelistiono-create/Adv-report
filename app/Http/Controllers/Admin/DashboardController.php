@@ -19,8 +19,11 @@ class DashboardController extends Controller
     {
         // TODO: refactor karena kode dupikat dengan ActivityTargetController@index()
         $user = auth()->user(); // atau Auth::user()
-        $year = $request->get('year', now()->year);
-        $month = $request->get('month', now()->month);
+        $nowMonth = now()->month;
+        $defaultYear = $nowMonth >= 4 ? now()->year : now()->year - 1;
+
+        $year = (int) $request->get('year', $defaultYear);
+        $month = (int) $request->get('month', $nowMonth);
         $quarter = null;
 
         if (!$quarter) {
