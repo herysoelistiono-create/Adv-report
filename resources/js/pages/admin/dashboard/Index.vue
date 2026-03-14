@@ -2,7 +2,7 @@
 import BsTargetCard from "./cards/BsTargetCard.vue";
 import AgronomistDashboardCard from "./cards/AgronomistDashboardCard.vue";
 import { router, usePage } from "@inertiajs/vue3";
-import { reactive, ref } from "vue";
+import { computed, reactive, ref } from "vue";
 import {
   create_month_options,
   current_month,
@@ -19,12 +19,15 @@ const userRole = usePage().props.auth.user.role;
 const title = "Dashboard";
 const showFilter = ref(true);
 
-const filter = reactive({
-  year: Number(query.year ?? currentYear),
-  month: Number(query.month ?? currentMonth),
-  view_type: query.view_type ?? "month",
-  quarter: Number(query.quarter ?? currentQuarter),
-});
+const allowedViewTypes = ["month", "quarter", "fiscal_year"];
+
+const toValidNumber = (value, fallback, allowed) => {
+  const num = Number(value);
+  return Number.isFinite(num) && allowed.includes(num) ? num : fallback;
+};
+
+const toValidViewType = (value) =>
+  allowedViewTypes.includes(value) ? value : "month";
 
 const years = [
   ...Array.from({ length: 3 }, (_, i) => {
@@ -41,6 +44,37 @@ const quarterOptions = [
   { value: 3, label: "Q3 (Okt-Des)" },
   { value: 4, label: "Q4 (Jan-Mar)" },
 ];
+
+const yearValues = years.map((y) => y.value);
+const monthValues = months.map((m) => m.value);
+const quarterValues = quarterOptions.map((q) => q.value);
+
+const filter = reactive({
+  year: toValidNumber(query.year, currentYear, yearValues),
+  month: toValidNumber(query.month, currentMonth, monthValues),
+  view_type: toValidViewType(query.view_type),
+  quarter: toValidNumber(query.quarter, currentQuarter, quarterValues),
+});
+
+const optionLabel = (options, value, fallback = "") => {
+  const exact = options.find((opt) => opt.value === value);
+  if (exact) return exact.label;
+
+  const loose = options.find((opt) => Number(opt.value) === Number(value));
+  if (loose) return loose.label;
+
+  return fallback;
+};
+
+const selectedYearLabel = computed(() =>
+  optionLabel(years, filter.year, `${filter.year} / ${Number(filter.year) + 1}`)
+);
+const selectedMonthLabel = computed(() =>
+  optionLabel(months, filter.month, "Pilih Bulan")
+);
+const selectedQuarterLabel = computed(() =>
+  optionLabel(quarterOptions, filter.quarter, "Pilih Kwartal")
+);
 
 const viewTypeOptions = [
   { value: "month", label: "Per Bulan" },
@@ -89,9 +123,12 @@ const onFilterChange = () => {
 
           <!-- Tahun -->
           <q-select
-            class="custom-select col-xs-6 col-sm-4"
+            class="dash-filter-select col-xs-12 col-sm-4"
             v-model="filter.year"
             :options="years"
+            option-value="value"
+            option-label="label"
+            :display-value="selectedYearLabel"
             label="Tahun"
             dense
             emit-value
@@ -103,9 +140,12 @@ const onFilterChange = () => {
           <!-- Bulan — BS selalu tampil, agronomist hanya mode 'month' -->
           <q-select
             v-if="userRole === 'bs' || (userRole === 'agronomist' && filter.view_type === 'month')"
-            class="custom-select col-xs-6 col-sm-4"
+            class="dash-filter-select col-xs-12 col-sm-4"
             v-model="filter.month"
             :options="months"
+            option-value="value"
+            option-label="label"
+            :display-value="selectedMonthLabel"
             label="Bulan"
             dense
             emit-value
@@ -117,9 +157,12 @@ const onFilterChange = () => {
           <!-- Kwartal — agronomist mode 'quarter' -->
           <q-select
             v-if="userRole === 'agronomist' && filter.view_type === 'quarter'"
-            class="custom-select col-xs-6 col-sm-4"
+            class="dash-filter-select col-xs-12 col-sm-4"
             v-model="filter.quarter"
             :options="quarterOptions"
+            option-value="value"
+            option-label="label"
+            :display-value="selectedQuarterLabel"
             label="Kwartal"
             dense
             emit-value
@@ -175,10 +218,23 @@ const onFilterChange = () => {
   width: 100%;
 }
 
+/* Keep selected value text visible in dashboard filters */
+:deep(.dash-filter-select .q-field__control-container) {
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+:deep(.dash-filter-select .q-field__native span) {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* Mobile: stack filter selects, shrink to fit */
 @media (max-width: 599px) {
-  :deep(.custom-select .q-field__label),
-  :deep(.custom-select .q-field__native) {
+  :deep(.dash-filter-select .q-field__label),
+  :deep(.dash-filter-select .q-field__native) {
     font-size: 0.78rem;
   }
   :deep(.q-btn-toggle .q-btn) {
