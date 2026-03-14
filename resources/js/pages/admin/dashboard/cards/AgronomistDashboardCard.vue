@@ -341,12 +341,12 @@ const chartDonutOption = computed(() => {
 
       <q-slide-transition>
         <div v-show="showDetail" class="table-wrapper">
-          <table class="agro-table" :style="{ '--data-cols': String(bsTotals.length + 1) }">
+          <table class="agro-table">
             <thead>
               <tr>
-                <th class="col-name">Jenis Kegiatan</th>
+                <th class="col-name">Jenis</th>
                 <th v-for="bs in bsTotals" :key="bs.name" class="col-bs">{{ shortName(bs.name) }}</th>
-                <th class="col-bs">Total</th>
+                <th class="col-bs col-total-head">Total</th>
               </tr>
             </thead>
             <tbody>
@@ -387,14 +387,16 @@ const chartDonutOption = computed(() => {
 /* ── Stat mini ── */
 .stat-card { border-radius: 6px; }
 .stat-val {
-  font-size: 1.3rem;
+  font-size: 1.25rem;
   font-weight: 700;
   line-height: 1.2;
+  min-height: 1.4rem;
 }
 .stat-lbl {
-  font-size: 0.68rem;
+  font-size: 0.66rem;
   color: #9e9e9e;
   line-height: 1.3;
+  white-space: nowrap;
 }
 
 /* ── Best BS ── */
@@ -478,7 +480,6 @@ const chartDonutOption = computed(() => {
 }
 .agro-table {
   width: 100%;
-  max-width: 100%;
   table-layout: fixed;
   border-collapse: collapse;
   font-size: 0.74rem;
@@ -486,39 +487,43 @@ const chartDonutOption = computed(() => {
 .agro-table th,
 .agro-table td {
   box-sizing: border-box;
-  padding: 4px 4px;
+  padding: 4px 5px;
   border: 1px solid #e8e8e8;
   overflow: hidden;
 }
+/* Header — rata kanan kecuali col-name */
 .agro-table th {
   background: #f5f5f5;
-  text-align: center;
+  text-align: right;
   font-weight: 600;
   font-size: 0.7rem;
-  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-/* Kolom Jenis Kegiatan — kiri, lebar ~40% */
+/* Kolom Jenis — kiri, lebar 36% */
 .agro-table th.col-name,
 .agro-table td.col-name {
   text-align: left;
-  width: 40%;
+  width: 36%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-/* Kolom angka BS & Total — rata tengah, lebar sama */
-.agro-table td.col-num,
-.agro-table th.col-bs {
-  text-align: center;
-  width: calc(58% / var(--data-cols, 5));
+/* Kolom angka BS & Total — rata kanan */
+.agro-table td.col-num {
+  text-align: right;
 }
-.agro-table td.col-total {
-  background: #f9fbe7;
+.agro-table th.col-bs,
+.agro-table th.col-total-head {
+  text-align: right;
+}
+/* Kolom Total — latar hijau muda */
+.agro-table td.col-total,
+.agro-table th.col-total-head {
+  background: #f1f8e9;
 }
 .footer-row td {
-  background: #eef2ff;
+  background: #e8eaf6;
   border-top: 2px solid #9fa8da;
 }
 
@@ -551,13 +556,13 @@ const chartDonutOption = computed(() => {
 
 /* ── Mobile tweaks ── */
 @media (max-width: 599px) {
-  .stat-val { font-size: 1.05rem; }
-  .stat-lbl { font-size: 0.62rem; }
+  .stat-val { font-size: 1rem; }
+  .stat-lbl { font-size: 0.6rem; }
   .kpi-badge { font-size: 0.9rem; padding: 2px 7px; }
   .type-kpi-row { padding: 2px 4px; }
-  .agro-table { font-size: 0.7rem; }
-  .agro-table th { font-size: 0.66rem; }
+  .agro-table { font-size: 0.68rem; }
+  .agro-table th { font-size: 0.64rem; }
   .agro-table th,
-  .agro-table td { padding: 3px 3px; }
+  .agro-table td { padding: 3px 4px; }
 }
 </style>
