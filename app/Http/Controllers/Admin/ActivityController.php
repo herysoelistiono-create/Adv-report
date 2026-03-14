@@ -166,6 +166,11 @@ class ActivityController extends Controller
                 $image = $image->scaleDown($newWidth, $newHeight);
             }
 
+            $uploadDirectory = public_path('uploads');
+            if (!is_dir($uploadDirectory)) {
+                mkdir($uploadDirectory, 0755, true);
+            }
+
             $image->save(public_path($validated['image_path']));
         } else if (empty($validated['image_path'])) {
             // Hapus file lama jika ada
