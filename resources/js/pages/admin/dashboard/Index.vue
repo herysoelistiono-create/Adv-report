@@ -2,7 +2,7 @@
 import BsTargetCard from "./cards/BsTargetCard.vue";
 import AgronomistDashboardCard from "./cards/AgronomistDashboardCard.vue";
 import { router, usePage } from "@inertiajs/vue3";
-import { computed, onMounted, reactive, ref } from "vue";
+import { computed, reactive, ref } from "vue";
 import {
   create_month_options,
   current_month,
@@ -29,17 +29,19 @@ const toValidNumber = (value, fallback, allowed) => {
 const toValidViewType = (value) =>
   allowedViewTypes.includes(value) ? value : "month";
 
-// Fiscal year starts in April (month 4)
-// Jan-Mar: fiscal year is (currentYear - 2)/(currentYear - 1)
-// Apr-Dec: fiscal year is (currentYear - 1)/currentYear
-const fiscalYearStart = currentMonth <= 3 ? currentYear - 2 : currentYear - 1;
+// Fiscal year starts in April (month 4).
+// Apr-Dec -> FY starts this calendar year, Jan-Mar -> previous calendar year.
+const currentFiscalYear = currentMonth >= 4 ? currentYear : currentYear - 1;
 
-const initialYearOptions = [
-  ...Array.from({ length: 3 }, (_, i) => {
-    const year = fiscalYearStart + i;
+const createFiscalYearOptions = (startYear, length = 8) =>
+  Array.from({ length }, (_, i) => {
+    const year = startYear - i;
     return { value: year, label: String(year) + " / " + String(year + 1) };
-  }),
-];
+  });
+
+// Mulai dari currentFiscalYear dengan 8 opsi agar cukup banyak tahun ke belakang
+// tersedia (termasuk FY 2024/2025 dan sebelumnya).
+const initialYearOptions = createFiscalYearOptions(currentFiscalYear);
 
 const initialMonthOptions = create_month_options();
 
@@ -59,11 +61,9 @@ const filterOptions = reactive({
   months: initialMonthOptions,
   quarters: initialQuarterOptions,
 });
-const loadingFilterOptions = ref(false);
-const filterOptionsError = ref(false);
 
 const filter = reactive({
-  year: toValidNumber(query.year, fiscalYearStart, yearValues),
+  year: toValidNumber(query.year, currentFiscalYear, yearValues),
   month: toValidNumber(query.month, currentMonth, monthValues),
   view_type: toValidViewType(query.view_type),
   quarter: toValidNumber(query.quarter, currentQuarter, quarterValues),
@@ -103,60 +103,9 @@ const viewTypeOptions = [
   { value: "fiscal_year", label: "Tahun Fiskal" },
 ];
 
-const fetchFilterOptions = async () => {
-  loadingFilterOptions.value = true;
-  filterOptionsError.value = false;
-
-  try {
-    await Promise.resolve();
-
-    const years = [...initialYearOptions];
-    const months = create_month_options();
-    const quarters = [...initialQuarterOptions];
-
-    filterOptions.years = years;
-    filterOptions.months = months;
-    filterOptions.quarters = quarters;
-
-    filter.year = toValidNumber(
-      filter.year,
-      fiscalYearStart,
-      years.map((item) => item.value)
-    );
-    filter.month = toValidNumber(
-      filter.month,
-      currentMonth,
-      months.map((item) => item.value)
-    );
-    filter.quarter = toValidNumber(
-      filter.quarter,
-      currentQuarter,
-      quarters.map((item) => item.value)
-    );
-
-    console.debug("[Dashboard] Filter options loaded", {
-      years,
-      months,
-      quarters,
-    });
-  } catch (error) {
-    filterOptions.years = [];
-    filterOptions.months = [];
-    filterOptions.quarters = [];
-    filterOptionsError.value = true;
-    console.error("[Dashboard] Failed to load filter options", error);
-  } finally {
-    loadingFilterOptions.value = false;
-  }
-};
-
 const onFilterChange = () => {
   router.visit(route("admin.dashboard", filter));
 };
-
-onMounted(() => {
-  fetchFilterOptions();
-});
 </script>
 
 <template>
@@ -192,14 +141,7 @@ onMounted(() => {
             />
           </div>
 
-          <div v-if="loadingFilterOptions" class="col-12">
-            <div class="dash-filter-loading">
-              <q-spinner color="primary" size="20px" />
-              <span>Memuat opsi filter...</span>
-            </div>
-          </div>
-
-          <template v-else>
+          <template>
             <!-- Tahun -->
             <q-select
               v-if="hasYearOptions"
@@ -275,12 +217,6 @@ onMounted(() => {
               <div v-else class="dash-filter-empty col-12 col-sm-4">No options available</div>
             </template>
 
-            <div
-              v-if="filterOptionsError && !hasYearOptions && !hasMonthOptions && !hasQuarterOptions"
-              class="dash-filter-empty col-12"
-            >
-              No options available
-            </div>
           </template>
         </div>
       </div>
@@ -332,15 +268,6 @@ onMounted(() => {
 
 :deep(.dash-filter-select) {
   width: 100%;
-}
-
-.dash-filter-loading {
-  min-height: 40px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0 6px;
-  color: rgba(0, 0, 0, 0.75);
 }
 
 .dash-filter-empty {
