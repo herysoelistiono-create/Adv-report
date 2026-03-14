@@ -161,10 +161,9 @@ class ActivityController extends Controller
                 $newWidth = (int) round($width / $ratio);
                 $newHeight = (int) round($height / $ratio);
 
-                $image->resize($newWidth, $newHeight, function ($constraint) {
-                    $constraint->aspectRatio();
-                    $constraint->upsize();
-                });
+                // Intervention Image v3: gunakan scaleDown agar tetap proporsional
+                // dan tidak melakukan upsize.
+                $image = $image->scaleDown($newWidth, $newHeight);
             }
 
             $image->save(public_path($validated['image_path']));
