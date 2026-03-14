@@ -68,7 +68,7 @@ const onFilterChange = () => {
     </template>
 
     <template #header v-if="showFilter">
-      <q-toolbar class="filter-bar">
+      <div class="filter-bar">
         <div class="row q-col-gutter-xs items-center q-pa-sm full-width">
 
           <!-- Tab view type — agronomist only -->
@@ -128,7 +128,7 @@ const onFilterChange = () => {
             @update:model-value="onFilterChange"
           />
         </div>
-      </q-toolbar>
+      </div>
     </template>
 
     <!-- BS Dashboard -->

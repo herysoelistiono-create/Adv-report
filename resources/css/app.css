@@ -66,15 +66,7 @@ a:hover {
   border-bottom: 1px solid #eee;
   padding: 0 !important;
   width: 100%;
-  overflow-x: hidden; /* clip gutter row negative-margin overflow */
-  height: auto !important; /* let content wrap vertically on mobile */
-}
-
-/* Allow toolbar inside filter-bar to grow */
-.filter-bar.q-toolbar,
-.filter-bar .q-toolbar {
-  height: auto !important;
-  min-height: 0 !important;
+  overflow-x: hidden;
 }
 
 .cursor-pointer {
