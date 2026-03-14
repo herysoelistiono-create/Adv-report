@@ -340,34 +340,27 @@ const chartDonutOption = computed(() => {
               <tr>
                 <th class="col-name">Jenis Kegiatan</th>
                 <th v-for="bs in bsTotals" :key="bs.name" class="col-bs">{{ shortName(bs.name) }}</th>
-                <th>Total</th>
+                <th class="col-bs">Total</th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="(at, ci) in activityTypes" :key="at.id">
                 <td class="col-name">
-                  <span class="type-dot" :style="{ background: COLORS[ci % COLORS.length] }"></span>
-                  {{ at.name }}
+                  <span class="type-dot" :style="{ background: COLORS[ci % COLORS.length] }"></span>{{ at.name }}
                 </td>
-                <td v-for="bs in bsTotals" :key="bs.name" class="text-center">
-                  <span :class="(bs.typeTotals[at.id] ?? 0) > 0 ? 'count-badge' : 'text-grey-4'">
-                    {{ bs.typeTotals[at.id] ?? 0 }}
-                  </span>
+                <td v-for="bs in bsTotals" :key="bs.name" class="col-num">
+                  <span :class="(bs.typeTotals[at.id] ?? 0) > 0 ? 'num-active' : 'num-zero'">{{ bs.typeTotals[at.id] ?? 0 }}</span>
                 </td>
-                <td class="text-center">
-                  <span :class="typeTotals[ci].total > 0 ? 'count-total' : 'text-grey-4'">
-                    {{ typeTotals[ci].total }}
-                  </span>
+                <td class="col-num col-total">
+                  <span :class="typeTotals[ci].total > 0 ? 'num-total' : 'num-zero'">{{ typeTotals[ci].total }}</span>
                 </td>
               </tr>
             </tbody>
             <tfoot>
               <tr class="footer-row">
-                <td class="col-name text-bold">Total</td>
-                <td v-for="bs in bsTotals" :key="bs.name" class="text-center text-bold text-primary">
-                  {{ bs.total }}
-                </td>
-                <td class="text-center text-bold text-primary">{{ grandTotal }}</td>
+                <td class="col-name"><strong>Total</strong></td>
+                <td v-for="bs in bsTotals" :key="bs.name" class="col-num col-grand">{{ bs.total }}</td>
+                <td class="col-num col-grand">{{ grandTotal }}</td>
               </tr>
             </tfoot>
           </table>
@@ -467,68 +460,66 @@ const chartDonutOption = computed(() => {
 .detail-toggle:hover { background: #e3f2fd; }
 
 /* ── Table ── */
-.table-wrapper { width: 100%; }
+.table-wrapper {
+  width: 100%;
+  overflow: hidden;
+}
 .agro-table {
   width: 100%;
   table-layout: fixed;
   border-collapse: collapse;
-  font-size: 0.76rem;
+  font-size: 0.74rem;
 }
 .agro-table th,
 .agro-table td {
-  padding: 4px 5px;
-  border: 1px solid #eeeeee;
-  word-break: break-word;
-  overflow-wrap: break-word;
+  padding: 4px 4px;
+  border: 1px solid #e8e8e8;
+  overflow: hidden;
 }
 .agro-table th {
   background: #f5f5f5;
   text-align: center;
   font-weight: 600;
-  font-size: 0.72rem;
+  font-size: 0.7rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
+/* Kolom Jenis Kegiatan — kiri, lebar ~40% */
 .agro-table th.col-name,
 .agro-table td.col-name {
   text-align: left;
-  width: 34%;
+  width: 40%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.agro-table th.col-bs,
-.agro-table td:not(.col-name) {
+/* Kolom angka BS & Total — rata tengah, lebar sama */
+.agro-table td.col-num,
+.agro-table th.col-bs {
   text-align: center;
-  width: auto;
+}
+.agro-table td.col-total {
+  background: #f9fbe7;
 }
 .footer-row td {
   background: #eef2ff;
   border-top: 2px solid #9fa8da;
 }
 
-/* ── Dot & Badge ── */
+/* ── Dot & Angka ── */
 .type-dot {
   display: inline-block;
-  width: 8px; height: 8px;
+  width: 7px; height: 7px;
   border-radius: 50%;
-  margin-right: 5px;
+  margin-right: 4px;
   flex-shrink: 0;
   vertical-align: middle;
 }
-.count-badge {
-  display: inline-block;
-  background: #e3f2fd;
-  color: #1565c0;
-  font-weight: 700;
-  border-radius: 10px;
-  padding: 1px 8px;
-  font-size: 0.76rem;
-}
-.count-total {
-  display: inline-block;
-  background: #e8f5e9;
-  color: #2e7d32;
-  font-weight: 700;
-  border-radius: 10px;
-  padding: 1px 8px;
-  font-size: 0.76rem;
-}
+.num-active { color: #1565c0; font-weight: 700; }
+.num-total  { color: #2e7d32; font-weight: 700; }
+.num-zero   { color: #bdbdbd; }
+.col-grand  { color: #1565c0; font-weight: 700; }
 
 /* ── Prevent outer horizontal scroll ── */
 :deep(.q-card) { min-width: 0; }
@@ -539,6 +530,5 @@ const chartDonutOption = computed(() => {
   .stat-lbl { font-size: 0.62rem; }
   .kpi-badge { font-size: 0.9rem; padding: 2px 7px; }
   .type-kpi-row { padding: 2px 4px; }
-  .count-badge, .count-total { padding: 1px 5px; font-size: 0.72rem; }
 }
 </style>
