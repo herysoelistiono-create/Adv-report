@@ -60,15 +60,21 @@ const kpiOverall = computed(() => summary.value?.totals ?? null);
 const kpiColor = (val) =>
   val === null ? "grey-5" : val >= 80 ? "positive" : val >= 60 ? "warning" : "negative";
 
+// Singkat nama BS: ambil kata pertama, maks 10 karakter
+const shortName = (name) => {
+  const first = (name ?? "").split(" ")[0];
+  return first.length > 10 ? first.slice(0, 9) + "…" : first;
+};
+
 // Stacked bar chart
 const chartBarOption = computed(() => ({
   tooltip: { trigger: "axis", axisPointer: { type: "shadow" } },
   legend: { bottom: 0, type: "scroll", textStyle: { fontSize: 11 } },
-  grid: { left: "4px", right: "4px", bottom: "54px", top: "6px", containLabel: true },
+  grid: { left: "4px", right: "4px", bottom: "46px", top: "6px", containLabel: true },
   xAxis: {
     type: "category",
-    data: bsTotals.value.map((bs) => bs.name),
-    axisLabel: { fontSize: 11, interval: 0, rotate: bsTotals.value.length > 4 ? 20 : 0 },
+    data: bsTotals.value.map((bs) => shortName(bs.name)),
+    axisLabel: { fontSize: 11, interval: 0 },
     axisLine: { lineStyle: { color: "#ccc" } },
     axisTick: { show: false },
   },
@@ -132,11 +138,11 @@ const chartDonutOption = computed(() => {
 </script>
 
 <template>
-  <div>
+  <div style="overflow-x: hidden; max-width: 100%">
     <!-- Period label -->
-    <div class="text-caption text-grey-6 q-mb-sm flex items-center">
-      <q-icon name="calendar_today" size="12px" class="q-mr-xs" />
-      {{ periodLabel }}
+    <div class="text-caption text-grey-6 q-mb-sm flex items-center" style="min-width:0;overflow:hidden">
+      <q-icon name="calendar_today" size="12px" class="q-mr-xs flex-shrink-0" />
+      <span class="ellipsis">{{ periodLabel }}</span>
     </div>
 
     <!-- Empty state -->
@@ -188,7 +194,7 @@ const chartDonutOption = computed(() => {
                 <q-icon name="emoji_events" color="amber-8" size="20px" class="q-mr-xs" />
                 <span class="text-caption text-bold text-grey-7">Best BS Periode Ini</span>
               </div>
-              <div class="text-subtitle2 text-bold text-grey-9 ellipsis">{{ bestBS.name }}</div>
+              <div class="text-subtitle2 text-bold text-grey-9 ellipsis">{{ shortName(bestBS.name) }}</div>
               <div class="row q-col-gutter-xs q-mt-xs">
                 <div class="col-6">
                   <div class="best-bs-stat">
@@ -269,18 +275,18 @@ const chartDonutOption = computed(() => {
 
       <!-- ── Baris 2: Charts ── -->
       <div class="row q-col-gutter-sm q-mb-sm">
-        <div class="col-xs-12 col-sm-7">
+        <div class="col-xs-12 col-sm-7" style="min-width:0">
           <q-card flat bordered class="bg-white">
             <q-card-section class="q-pa-sm">
               <div class="chart-title">Kegiatan per BS</div>
-              <ECharts :option="chartBarOption" autoresize style="height: 220px; width: 100%" />
+              <ECharts :option="chartBarOption" autoresize style="height: 210px; width: 100%; min-width: 0" />
             </q-card-section>
           </q-card>
         </div>
-        <div class="col-xs-12 col-sm-5">
+        <div class="col-xs-12 col-sm-5" style="min-width:0">
           <q-card flat bordered class="bg-white">
             <q-card-section class="q-pa-sm">
-              <ECharts :option="chartDonutOption" autoresize style="height: 252px; width: 100%" />
+              <ECharts :option="chartDonutOption" autoresize style="height: 240px; width: 100%; min-width: 0" />
             </q-card-section>
           </q-card>
         </div>
@@ -333,7 +339,7 @@ const chartDonutOption = computed(() => {
             <thead>
               <tr>
                 <th class="col-name">Jenis Kegiatan</th>
-                <th v-for="bs in bsTotals" :key="bs.name">{{ bs.name }}</th>
+                <th v-for="bs in bsTotals" :key="bs.name" class="col-bs">{{ shortName(bs.name) }}</th>
                 <th>Total</th>
               </tr>
             </thead>
@@ -461,28 +467,35 @@ const chartDonutOption = computed(() => {
 .detail-toggle:hover { background: #e3f2fd; }
 
 /* ── Table ── */
-.table-wrapper { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.table-wrapper { width: 100%; }
 .agro-table {
   width: 100%;
+  table-layout: fixed;
   border-collapse: collapse;
-  font-size: 0.8rem;
+  font-size: 0.76rem;
 }
 .agro-table th,
 .agro-table td {
-  padding: 4px 9px;
+  padding: 4px 5px;
   border: 1px solid #eeeeee;
-  white-space: nowrap;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 .agro-table th {
   background: #f5f5f5;
   text-align: center;
   font-weight: 600;
-  font-size: 0.76rem;
+  font-size: 0.72rem;
 }
 .agro-table th.col-name,
 .agro-table td.col-name {
   text-align: left;
-  min-width: 130px;
+  width: 34%;
+}
+.agro-table th.col-bs,
+.agro-table td:not(.col-name) {
+  text-align: center;
+  width: auto;
 }
 .footer-row td {
   background: #eef2ff;
@@ -517,10 +530,15 @@ const chartDonutOption = computed(() => {
   font-size: 0.76rem;
 }
 
+/* ── Prevent outer horizontal scroll ── */
+:deep(.q-card) { min-width: 0; }
+
 /* ── Mobile tweaks ── */
 @media (max-width: 599px) {
-  .stat-val { font-size: 1.1rem; }
-  .stat-lbl { font-size: 0.64rem; }
-  .kpi-badge { font-size: 0.95rem; padding: 2px 8px; }
+  .stat-val { font-size: 1.05rem; }
+  .stat-lbl { font-size: 0.62rem; }
+  .kpi-badge { font-size: 0.9rem; padding: 2px 7px; }
+  .type-kpi-row { padding: 2px 4px; }
+  .count-badge, .count-total { padding: 1px 5px; font-size: 0.72rem; }
 }
 </style>
