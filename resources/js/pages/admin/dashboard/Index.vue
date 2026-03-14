@@ -2,7 +2,7 @@
 import BsTargetCard from "./cards/BsTargetCard.vue";
 import AgronomistDashboardCard from "./cards/AgronomistDashboardCard.vue";
 import { router, usePage } from "@inertiajs/vue3";
-import { computed, reactive, ref } from "vue";
+import { computed, onMounted, reactive, ref } from "vue";
 import {
   create_month_options,
   current_month,
@@ -29,25 +29,38 @@ const toValidNumber = (value, fallback, allowed) => {
 const toValidViewType = (value) =>
   allowedViewTypes.includes(value) ? value : "month";
 
-const years = [
+// Fiscal year starts in April (month 4)
+// Jan-Mar: fiscal year is (currentYear - 2)/(currentYear - 1)
+// Apr-Dec: fiscal year is (currentYear - 1)/currentYear
+const fiscalYearStart = currentMonth <= 3 ? currentYear - 2 : currentYear - 1;
+
+const initialYearOptions = [
   ...Array.from({ length: 3 }, (_, i) => {
-    const year = currentYear - 1 + i;
+    const year = fiscalYearStart + i;
     return { value: year, label: String(year) + " / " + String(year + 1) };
   }),
 ];
 
-const months = create_month_options();
+const initialMonthOptions = create_month_options();
 
-const quarterOptions = [
+const initialQuarterOptions = [
   { value: 1, label: "Q1 (Apr-Jun)" },
   { value: 2, label: "Q2 (Jul-Sep)" },
   { value: 3, label: "Q3 (Okt-Des)" },
   { value: 4, label: "Q4 (Jan-Mar)" },
 ];
 
-const yearValues = years.map((y) => y.value);
-const monthValues = months.map((m) => m.value);
-const quarterValues = quarterOptions.map((q) => q.value);
+const yearValues = initialYearOptions.map((y) => y.value);
+const monthValues = initialMonthOptions.map((m) => m.value);
+const quarterValues = initialQuarterOptions.map((q) => q.value);
+
+const filterOptions = reactive({
+  years: [],
+  months: [],
+  quarters: [],
+});
+const loadingFilterOptions = ref(true);
+const filterOptionsError = ref(false);
 
 const filter = reactive({
   year: toValidNumber(query.year, currentYear, yearValues),
@@ -56,7 +69,7 @@ const filter = reactive({
   quarter: toValidNumber(query.quarter, currentQuarter, quarterValues),
 });
 
-const optionLabel = (options, value, fallback = "") => {
+const optionLabel = (options = [], value, fallback = "") => {
   const exact = options.find((opt) => opt.value === value);
   if (exact) return exact.label;
 
@@ -67,14 +80,22 @@ const optionLabel = (options, value, fallback = "") => {
 };
 
 const selectedYearLabel = computed(() =>
-  optionLabel(years, filter.year, `${filter.year} / ${Number(filter.year) + 1}`)
+  optionLabel(
+    filterOptions.years,
+    filter.year,
+    `${filter.year} / ${Number(filter.year) + 1}`
+  )
 );
 const selectedMonthLabel = computed(() =>
-  optionLabel(months, filter.month, "Pilih Bulan")
+  optionLabel(filterOptions.months, filter.month, "Pilih Bulan")
 );
 const selectedQuarterLabel = computed(() =>
-  optionLabel(quarterOptions, filter.quarter, "Pilih Kwartal")
+  optionLabel(filterOptions.quarters, filter.quarter, "Pilih Kwartal")
 );
+
+const hasYearOptions = computed(() => filterOptions.years.length > 0);
+const hasMonthOptions = computed(() => filterOptions.months.length > 0);
+const hasQuarterOptions = computed(() => filterOptions.quarters.length > 0);
 
 const viewTypeOptions = [
   { value: "month", label: "Per Bulan" },
@@ -82,9 +103,60 @@ const viewTypeOptions = [
   { value: "fiscal_year", label: "Tahun Fiskal" },
 ];
 
+const fetchFilterOptions = async () => {
+  loadingFilterOptions.value = true;
+  filterOptionsError.value = false;
+
+  try {
+    await Promise.resolve();
+
+    const years = [...initialYearOptions];
+    const months = create_month_options();
+    const quarters = [...initialQuarterOptions];
+
+    filterOptions.years = years;
+    filterOptions.months = months;
+    filterOptions.quarters = quarters;
+
+    filter.year = toValidNumber(
+      filter.year,
+      currentYear,
+      years.map((item) => item.value)
+    );
+    filter.month = toValidNumber(
+      filter.month,
+      currentMonth,
+      months.map((item) => item.value)
+    );
+    filter.quarter = toValidNumber(
+      filter.quarter,
+      currentQuarter,
+      quarters.map((item) => item.value)
+    );
+
+    console.debug("[Dashboard] Filter options loaded", {
+      years,
+      months,
+      quarters,
+    });
+  } catch (error) {
+    filterOptions.years = [];
+    filterOptions.months = [];
+    filterOptions.quarters = [];
+    filterOptionsError.value = true;
+    console.error("[Dashboard] Failed to load filter options", error);
+  } finally {
+    loadingFilterOptions.value = false;
+  }
+};
+
 const onFilterChange = () => {
   router.visit(route("admin.dashboard", filter));
 };
+
+onMounted(() => {
+  fetchFilterOptions();
+});
 </script>
 
 <template>
@@ -104,7 +176,6 @@ const onFilterChange = () => {
     <template #header v-if="showFilter">
       <div class="filter-bar">
         <div class="row q-col-gutter-xs items-center q-pa-sm full-width">
-
           <!-- Tab view type — agronomist only -->
           <div v-if="userRole === 'agronomist'" class="col-12 q-pb-xs">
             <q-btn-toggle
@@ -121,70 +192,96 @@ const onFilterChange = () => {
             />
           </div>
 
-          <!-- Tahun -->
-          <q-select
-            class="dash-filter-select col-xs-12 col-sm-4"
-            v-model="filter.year"
-            :options="years"
-            option-value="value"
-            option-label="label"
-            :display-value="selectedYearLabel"
-            label="Tahun"
-            dense
-            stack-label
-            emit-value
-            map-options
-            outlined
-            @update:model-value="onFilterChange"
-          >
-            <template #selected-item="scope">
-              <span class="dash-filter-selected">{{ scope.opt?.label ?? selectedYearLabel }}</span>
-            </template>
-          </q-select>
+          <div v-if="loadingFilterOptions" class="col-12">
+            <div class="dash-filter-loading">
+              <q-spinner color="primary" size="20px" />
+              <span>Memuat opsi filter...</span>
+            </div>
+          </div>
 
-          <!-- Bulan — BS selalu tampil, agronomist hanya mode 'month' -->
-          <q-select
-            v-if="userRole === 'bs' || (userRole === 'agronomist' && filter.view_type === 'month')"
-            class="dash-filter-select col-xs-12 col-sm-4"
-            v-model="filter.month"
-            :options="months"
-            option-value="value"
-            option-label="label"
-            :display-value="selectedMonthLabel"
-            label="Bulan"
-            dense
-            stack-label
-            emit-value
-            map-options
-            outlined
-            @update:model-value="onFilterChange"
-          >
-            <template #selected-item="scope">
-              <span class="dash-filter-selected">{{ scope.opt?.label ?? selectedMonthLabel }}</span>
-            </template>
-          </q-select>
+          <template v-else>
+            <!-- Tahun -->
+            <q-select
+              v-if="hasYearOptions"
+              class="dash-filter-select col-12 col-sm-4"
+              v-model="filter.year"
+              :options="filterOptions.years"
+              option-value="value"
+              option-label="label"
+              :display-value="selectedYearLabel"
+              label="Tahun"
+              dense
+              stack-label
+              emit-value
+              map-options
+              outlined
+              @update:model-value="onFilterChange"
+            >
+              <template #selected-item="scope">
+                <span class="dash-filter-selected">{{ scope.opt?.label ?? selectedYearLabel }}</span>
+              </template>
+            </q-select>
+            <div v-else class="dash-filter-empty col-12 col-sm-4">No options available</div>
 
-          <!-- Kwartal — agronomist mode 'quarter' -->
-          <q-select
-            v-if="userRole === 'agronomist' && filter.view_type === 'quarter'"
-            class="dash-filter-select col-xs-12 col-sm-4"
-            v-model="filter.quarter"
-            :options="quarterOptions"
-            option-value="value"
-            option-label="label"
-            :display-value="selectedQuarterLabel"
-            label="Kwartal"
-            dense
-            stack-label
-            emit-value
-            map-options
-            outlined
-            @update:model-value="onFilterChange"
-          >
-            <template #selected-item="scope">
-              <span class="dash-filter-selected">{{ scope.opt?.label ?? selectedQuarterLabel }}</span>
+            <!-- Bulan — BS selalu tampil, agronomist hanya mode 'month' -->
+            <template
+              v-if="userRole === 'bs' || (userRole === 'agronomist' && filter.view_type === 'month')"
+            >
+              <q-select
+                v-if="hasMonthOptions"
+                class="dash-filter-select col-12 col-sm-4"
+                v-model="filter.month"
+                :options="filterOptions.months"
+                option-value="value"
+                option-label="label"
+                :display-value="selectedMonthLabel"
+                label="Bulan"
+                dense
+                stack-label
+                emit-value
+                map-options
+                outlined
+                @update:model-value="onFilterChange"
+              >
+                <template #selected-item="scope">
+                  <span class="dash-filter-selected">{{ scope.opt?.label ?? selectedMonthLabel }}</span>
+                </template>
+              </q-select>
+              <div v-else class="dash-filter-empty col-12 col-sm-4">No options available</div>
             </template>
-          </q-select>
+
+            <!-- Kwartal — agronomist mode 'quarter' -->
+            <template v-if="userRole === 'agronomist' && filter.view_type === 'quarter'">
+              <q-select
+                v-if="hasQuarterOptions"
+                class="dash-filter-select col-12 col-sm-4"
+                v-model="filter.quarter"
+                :options="filterOptions.quarters"
+                option-value="value"
+                option-label="label"
+                :display-value="selectedQuarterLabel"
+                label="Kwartal"
+                dense
+                stack-label
+                emit-value
+                map-options
+                outlined
+                @update:model-value="onFilterChange"
+              >
+                <template #selected-item="scope">
+                  <span class="dash-filter-selected">{{ scope.opt?.label ?? selectedQuarterLabel }}</span>
+                </template>
+              </q-select>
+              <div v-else class="dash-filter-empty col-12 col-sm-4">No options available</div>
+            </template>
+
+            <div
+              v-if="filterOptionsError && !hasYearOptions && !hasMonthOptions && !hasQuarterOptions"
+              class="dash-filter-empty col-12"
+            >
+              No options available
+            </div>
+          </template>
         </div>
       </div>
     </template>
@@ -231,6 +328,30 @@ const onFilterChange = () => {
   margin-left: 0 !important;
   margin-right: 0 !important;
   width: 100%;
+}
+
+:deep(.dash-filter-select) {
+  width: 100%;
+}
+
+.dash-filter-loading {
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 6px;
+  color: rgba(0, 0, 0, 0.75);
+}
+
+.dash-filter-empty {
+  min-height: 40px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  border: 1px dashed rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  color: rgba(0, 0, 0, 0.56);
 }
 
 /* Keep selected value text visible in dashboard filters */
