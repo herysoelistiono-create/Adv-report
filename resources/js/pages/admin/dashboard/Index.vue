@@ -55,15 +55,15 @@ const monthValues = initialMonthOptions.map((m) => m.value);
 const quarterValues = initialQuarterOptions.map((q) => q.value);
 
 const filterOptions = reactive({
-  years: [],
-  months: [],
-  quarters: [],
+  years: initialYearOptions,
+  months: initialMonthOptions,
+  quarters: initialQuarterOptions,
 });
-const loadingFilterOptions = ref(true);
+const loadingFilterOptions = ref(false);
 const filterOptionsError = ref(false);
 
 const filter = reactive({
-  year: toValidNumber(query.year, currentYear, yearValues),
+  year: toValidNumber(query.year, fiscalYearStart, yearValues),
   month: toValidNumber(query.month, currentMonth, monthValues),
   view_type: toValidViewType(query.view_type),
   quarter: toValidNumber(query.quarter, currentQuarter, quarterValues),
@@ -120,7 +120,7 @@ const fetchFilterOptions = async () => {
 
     filter.year = toValidNumber(
       filter.year,
-      currentYear,
+      fiscalYearStart,
       years.map((item) => item.value)
     );
     filter.month = toValidNumber(
