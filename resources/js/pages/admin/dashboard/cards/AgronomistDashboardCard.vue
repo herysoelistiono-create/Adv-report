@@ -60,9 +60,15 @@ const kpiOverall = computed(() => summary.value?.totals ?? null);
 const kpiColor = (val) =>
   val === null ? "grey-5" : val >= 80 ? "positive" : val >= 60 ? "warning" : "negative";
 
-// Singkat nama BS: ambil kata pertama, maks 10 karakter
+// Singkat nama BS dengan alias yang diminta user
 const shortName = (name) => {
-  const first = (name ?? "").split(" ")[0];
+  const n = (name ?? "").toLowerCase();
+  if (n.includes("iing")) return "iing";
+  if (n.includes("rifki")) return "rifki";
+  if (n.includes("listianto")) return "listianto";
+  if (n.includes("fatkhur")) return "Fatkhur";
+
+  const first = (name ?? "").trim().split(/\s+/)[0] ?? "";
   return first.length > 10 ? first.slice(0, 9) + "…" : first;
 };
 
@@ -138,7 +144,7 @@ const chartDonutOption = computed(() => {
 </script>
 
 <template>
-  <div style="overflow-x: hidden; max-width: 100%">
+  <div class="dashboard-shell">
     <!-- Period label -->
     <div class="text-caption text-grey-6 q-mb-sm flex items-center" style="min-width:0;overflow:hidden">
       <q-icon name="calendar_today" size="12px" class="q-mr-xs flex-shrink-0" />
@@ -304,7 +310,7 @@ const chartDonutOption = computed(() => {
                 class="col-xs-6 col-sm-4 col-md-3"
               >
                 <div class="kpi-bs-item">
-                  <div class="kpi-bs-name ellipsis">{{ sr.name }}</div>
+                  <div class="kpi-bs-name ellipsis">{{ shortName(sr.name) }}</div>
                   <div class="text-caption text-grey-6 q-mb-xs">
                     {{ sr.total_actual }} / {{ sr.total_target }}
                   </div>
@@ -335,7 +341,7 @@ const chartDonutOption = computed(() => {
 
       <q-slide-transition>
         <div v-show="showDetail" class="table-wrapper">
-          <table class="agro-table">
+          <table class="agro-table" :style="{ '--data-cols': String(bsTotals.length + 1) }">
             <thead>
               <tr>
                 <th class="col-name">Jenis Kegiatan</th>
@@ -372,6 +378,12 @@ const chartDonutOption = computed(() => {
 </template>
 
 <style scoped>
+.dashboard-shell {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: clip;
+}
+
 /* ── Stat mini ── */
 .stat-card { border-radius: 6px; }
 .stat-val {
@@ -466,12 +478,14 @@ const chartDonutOption = computed(() => {
 }
 .agro-table {
   width: 100%;
+  max-width: 100%;
   table-layout: fixed;
   border-collapse: collapse;
   font-size: 0.74rem;
 }
 .agro-table th,
 .agro-table td {
+  box-sizing: border-box;
   padding: 4px 4px;
   border: 1px solid #e8e8e8;
   overflow: hidden;
@@ -498,6 +512,7 @@ const chartDonutOption = computed(() => {
 .agro-table td.col-num,
 .agro-table th.col-bs {
   text-align: center;
+  width: calc(58% / var(--data-cols, 5));
 }
 .agro-table td.col-total {
   background: #f9fbe7;
@@ -523,6 +538,16 @@ const chartDonutOption = computed(() => {
 
 /* ── Prevent outer horizontal scroll ── */
 :deep(.q-card) { min-width: 0; }
+:deep(.row.q-col-gutter-sm),
+:deep(.row.q-col-gutter-xs) {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+:deep(.row.q-col-gutter-sm > [class*='col-']),
+:deep(.row.q-col-gutter-xs > [class*='col-']) {
+  padding-left: 4px !important;
+  padding-right: 4px !important;
+}
 
 /* ── Mobile tweaks ── */
 @media (max-width: 599px) {
@@ -530,5 +555,9 @@ const chartDonutOption = computed(() => {
   .stat-lbl { font-size: 0.62rem; }
   .kpi-badge { font-size: 0.9rem; padding: 2px 7px; }
   .type-kpi-row { padding: 2px 4px; }
+  .agro-table { font-size: 0.7rem; }
+  .agro-table th { font-size: 0.66rem; }
+  .agro-table th,
+  .agro-table td { padding: 3px 3px; }
 }
 </style>
