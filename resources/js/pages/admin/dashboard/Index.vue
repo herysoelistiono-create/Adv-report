@@ -131,11 +131,16 @@ const onFilterChange = () => {
             :display-value="selectedYearLabel"
             label="Tahun"
             dense
+            stack-label
             emit-value
             map-options
             outlined
             @update:model-value="onFilterChange"
-          />
+          >
+            <template #selected-item="scope">
+              <span class="dash-filter-selected">{{ scope.opt?.label ?? selectedYearLabel }}</span>
+            </template>
+          </q-select>
 
           <!-- Bulan — BS selalu tampil, agronomist hanya mode 'month' -->
           <q-select
@@ -148,11 +153,16 @@ const onFilterChange = () => {
             :display-value="selectedMonthLabel"
             label="Bulan"
             dense
+            stack-label
             emit-value
             map-options
             outlined
             @update:model-value="onFilterChange"
-          />
+          >
+            <template #selected-item="scope">
+              <span class="dash-filter-selected">{{ scope.opt?.label ?? selectedMonthLabel }}</span>
+            </template>
+          </q-select>
 
           <!-- Kwartal — agronomist mode 'quarter' -->
           <q-select
@@ -165,11 +175,16 @@ const onFilterChange = () => {
             :display-value="selectedQuarterLabel"
             label="Kwartal"
             dense
+            stack-label
             emit-value
             map-options
             outlined
             @update:model-value="onFilterChange"
-          />
+          >
+            <template #selected-item="scope">
+              <span class="dash-filter-selected">{{ scope.opt?.label ?? selectedQuarterLabel }}</span>
+            </template>
+          </q-select>
         </div>
       </div>
     </template>
@@ -219,16 +234,13 @@ const onFilterChange = () => {
 }
 
 /* Keep selected value text visible in dashboard filters */
-:deep(.dash-filter-select .q-field__control-container) {
+:deep(.dash-filter-selected) {
+  display: inline-block;
+  max-width: 100%;
   white-space: nowrap;
   overflow: hidden;
-}
-
-:deep(.dash-filter-select .q-field__native span) {
-  display: block;
-  max-width: 100%;
-  overflow: hidden;
   text-overflow: ellipsis;
+  color: rgba(0, 0, 0, 0.87);
 }
 
 /* Mobile: stack filter selects, shrink to fit */
